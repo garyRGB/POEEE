@@ -7,7 +7,7 @@ DATA.classes = {
     armor: 0,           // 護甲（之後算減傷）
     potions: 5,         // 開局藥水數量
     potionHealPct: 50,  // 一瓶補最大生命的幾 %
-    revives: 0          // 開局復活道具（靠怪物掉落）
+    revives: 5          // 開局自帶的復活道具（之後靠怪物掉落補充）
   },
   list: [
     {

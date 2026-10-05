@@ -9,6 +9,7 @@ window.G = window.G || {};
       hp: type.baseLife * level,
       attack: type.baseAttack * level,
       attacksPerSec: type.attacksPerSec,
+      atkTimer: 1 / type.attacksPerSec - (type.firstAttackSec ?? 1 / type.attacksPerSec), // 讓第一下在 firstAttackSec 秒後
       exp: type.baseExp * level,
       gold: type.gold.map(g => g * level),
       reviveDropChance: type.reviveDropChance

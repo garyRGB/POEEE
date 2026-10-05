@@ -8,6 +8,7 @@ DATA.monsters = [
     baseLife: 20,            // 每級生命（Lv 1 = 20、Lv 5 = 100）
     baseAttack: 1,           // 每級攻擊（Lv 1 = 1、Lv 5 = 5）
     attacksPerSec: 0.4,      // 每秒攻擊次數（不隨等級變）
+    firstAttackSec: 1.0,     // 出現後幾秒打第一下（之後照攻速）
     baseExp: 5,              // 每級經驗
     gold: [2, 4],            // 每級金幣範圍
     reviveDropChance: 0.05   // 掉復活道具的機率（5%）

@@ -237,6 +237,28 @@ const COMBAT_CHECKS = [
     });
     return (!r.dead && r.kills > 0) || JSON.stringify(r);
   }],
+  ["#4 怪物出現後約 firstAttackSec 秒打第一下", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, t = DATA.monsters[0];
+      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999; G.hero.attacksPerSec = 0.0001;
+      S.monsters[0] = G.makeMonster(t, 1);
+      const full = S.hp;
+      for (let i = 0; i < Math.round(t.firstAttackSec * 10) - 1; i++) G.step(0.1);
+      const before = S.hp;
+      G.step(0.15);
+      return { full, before, after: S.hp, sec: t.firstAttackSec };
+    });
+    return (r.before === r.full && r.after < r.full) || JSON.stringify(r);
+  }],
+  ["#4 放置 3 分鐘（不點擊），女巫、決鬥者的血會掉", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S;
+      for (let i = 0; i < 1800; i++) G.step(0.1);
+      return { hp: S.hp, max: G.hero.maxLife, dead: S.dead };
+    });
+    return (r.hp < r.max) || JSON.stringify(r);
+  }],
+  ["#4 開局自帶 5 個復活道具", async ({ page }) => (await page.locator("#revives").innerText()) === "5"],
 ];
 
 (async () => {
@@ -267,8 +289,11 @@ const COMBAT_CHECKS = [
     await c.page.close();
   }
 
-  for (const [name, fn] of COMBAT_CHECKS) {
-    const c = await open(browser, url, { start: "duelist" });
+  // 名稱寫「女巫、決鬥者」的檢查，兩個職業各跑一次
+  const BOTH = "女巫、決鬥者", CLASS_NAME = { witch: "女巫", duelist: "決鬥者" };
+  for (const [title, fn] of COMBAT_CHECKS) for (const cls of title.includes(BOTH) ? ["witch", "duelist"] : ["duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = title.replace(BOTH, CLASS_NAME[cls]);
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
