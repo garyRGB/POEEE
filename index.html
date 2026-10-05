@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="src/errors.js"></script>
 </head>
 <body>
 <div class="app">
@@ -27,11 +28,9 @@
       <div class="monsters" id="monsters"></div>
     </div>
     <div class="feed" id="feed"></div>
-    <div class="stagec num"><span id="kills">0</span>/<span id="killsNeed"></span><br>第 <span id="stage">1</span> 關</div>
     <div class="ctrl">
       <div class="items num"><span>藥水 <b id="potions"></b></span><span>復活 <b id="revives"></b></span></div>
-      <label class="check"><input type="checkbox" disabled> 自動挑戰</label>
-      <button class="btn gold" disabled>挑戰首領</button>
+      <button class="btn gold soon" id="atlasBtn" aria-disabled="true">輿圖</button>
     </div>
   </div>
 
@@ -55,10 +54,12 @@
   </div>
 </div>
 
-<!-- 資料先載入，程式再載入：調數值只改 data/ -->
+<!-- 資料先載入，程式再載入：調數值只改 data/。程式一個系統一個檔案，放 src/ -->
 <script src="data/hero.js"></script>
 <script src="data/monsters.js"></script>
 <script src="data/rules.js"></script>
-<script src="game.js"></script>
+<script src="src/state.js"></script>
+<script src="src/render.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>

@@ -10,7 +10,8 @@
 | --- | --- | --- |
 | 計畫書（唯一的真相） | repo 根目錄 `PLAN.md` | 進度看板、已定案的決定、待辦都在這裡。開工先讀，收工要更新 |
 | 介面樣板 | repo 根目錄 `ui_10051618.html` | 已認可的畫面樣子，寫遊戲時照著做 |
-| GitHub repo | https://github.com/garyRGB/POEEE （私人） | 手機 Claude App 的 Code 分頁選這個 repo、分支 `main` |
+| 遊戲網址 | https://garyrgb.github.io/POEEE/ | GitHub Pages，推上 `main` 約 1～2 分鐘後更新 |
+| GitHub repo | https://github.com/garyRGB/POEEE （公開） | 手機 Claude App 的 Code 分頁選這個 repo、分支 `main` |
 | Code 分頁入口 | https://claude.ai/code | 手機上是 Claude App 的「Code」分頁 |
 
 舊的 Claude Docs 計畫書（2026-10-05 以前）已停用，內容全部搬進 `PLAN.md`。
@@ -37,6 +38,8 @@ Gary 自己做的手機放置 ARPG：放著自動打怪，靠配天賦樹和擲�
 - **資料和程式分開。** 詞綴、天賦節點、自動規則都寫成資料，調數值只改資料。
 - **每個階段做完都要能玩。** 寧可小，不要做一半。
 - **以陌生人會玩為標準。** 不能只有 Gary 看得懂的設定或操作。
+- **推之前先跑自動檢查。** `NODE_PATH=$(npm root -g) node tests/smoke.js` 全部通過才推上 `main`。每做完一個小任務，把它的驗收項目加進 `tests/smoke.js`，舊的不刪。
+- **程式一個系統一個檔案，** 放 `src/`；數值放 `data/`。
 - **一次一小步。** 每個任務切成 15～30 分鐘做得完；卡住超過 30 分鐘就停，記下卡在哪。
 
 ## 五、目前介面規格（Gary 已認可，改動前先問）
