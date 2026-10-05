@@ -6,15 +6,16 @@
 
 ## 進度看板
 
-**現在在：第 0 階段「準備」，還沒開始寫程式。**
+**現在在：第 0 階段結束，準備進第 1 階段，還沒開始寫遊戲程式。**
 
 | 項目 | 內容 |
 | --- | --- |
-| 目前階段 | 第 0 階段：準備（介面方向已認可，工具已接通） |
-| 下一步 | 在 Code 分頁開新工作階段，確認 Claude 讀得到 CLAUDE.md 和 PLAN.md；確認後進入第 1 階段，先把第 1 階段切成 15～30 分鐘的小任務 |
+| 目前階段 | 第 0 階段完成（工具接通、Code 讀得到 CLAUDE.md 和 PLAN.md、遊戲網址開好） |
+| 下一步 | 跟 Gary 確認第 1 階段的小任務清單（15～30 分鐘一個），確認後寫進這張表，再開始做第 1 個 |
+| 遊戲網址 | https://garyrgb.github.io/POEEE/ （推上 `main` 約 1～2 分鐘後更新；目前首頁轉到介面樣板） |
 | 介面樣板 | repo 裡的 `ui_10051618.html` |
-| GitHub repo | https://github.com/garyRGB/POEEE （私人） |
-| 缺的資料 | 無（第 0 階段可以結束） |
+| GitHub repo | https://github.com/garyRGB/POEEE （公開） |
+| 缺的資料 | 無；缺 POE2 機制資料時查 poe2db（見「可直接參考的東西」） |
 | 上次更新 | 2026-10-05 |
 
 看完這張表就知道今天要做什麼。其他章節是查資料用的，不用每次讀。
@@ -54,6 +55,8 @@
 
 | 日期 | 決定 | 原因 |
 | --- | --- | --- |
+| 2026-10-05 | poe2db.tw 當 POE2 機制資料庫：缺資訊時查相關頁面學機制，不整站爬、不抄數值 | 整站爬等於抄 GGG 的數值，違反鐵則；repo 公開有下架風險 |
+| 2026-10-05 | repo 改公開，開 GitHub Pages（`main` 分支根目錄），首頁 `index.html` | 免費帳號只有公開 repo 能開 Pages；付費升 Pro 網頁照樣公開，不划算；第 6 階段給人試玩直接用同一個網址 |
 | 2026-10-05 | 計畫書搬進 repo 變成 PLAN.md，Claude Docs 那份停用 | Code 工作階段讀不到 Claude Docs；放 repo 才能每次開工自動接上進度 |
 | 2026-10-05 | 專案和 repo 改名 POEEE（原 PPPOE） | Claude 把 PPPOE 誤認成網路撥接 PPPoE |
 | 2026-10-05 | 天賦可以退回，但只能退「退了之後其他天賦還連得回起點」的那顆；另有全部退回 | Gary 指定；防止樹斷成兩半 |
@@ -102,6 +105,9 @@
 | [Exiled Casual 開發日誌](https://github.com/IT-BAER/exiled-casual/blob/main/devlog/README.md) | 畫面長怎樣、功能怎麼一步步長出來 | 0 |
 | [ARPG Loot Lab](https://github.com/tankaiyangbusiness/arpg) | 詞綴全放在一個 JSON 檔，加詞綴不用改程式 | 2 |
 | [放置天堂](https://pp771007.github.io/idle-lineage-class/) | 自動設定畫面：血量低於幾 % 喝水、魔力高於幾 % 放技能、自動販賣 | 1、4 |
+| [poe2db 繁中版](https://poe2db.tw/tw/) | POE2 全部資料（詞綴、天賦、物品、怪物）。缺機制資訊時查相關幾頁，學「怎麼設計」，數值自己定；不整站爬 | 2、3 以後 |
+
+**poe2db 注意：** 雲端工作階段的網路目前擋 `poe2db.tw`。要 Claude 自己讀，Gary 要先在環境設定 → Network access → Allowed domains 加 `poe2db.tw`；不加就由 Gary 截圖貼給 Claude。
 
 **詞綴資料格式（第 2 階段用）**
 
@@ -160,6 +166,8 @@
 
 | 日期 | 結論 | 進度變化 |
 | --- | --- | --- |
+| 2026-10-05 | 討論 poe2db.tw：不整站爬，記為參考資料，缺資訊時查相關頁；雲端網路擋 poe2db.tw 和 github.io | 參考清單加 poe2db |
+| 2026-10-05 | Code 讀得到 CLAUDE.md、PLAN.md；repo 改公開、開 GitHub Pages；加 `index.html`（先轉到介面樣板）和 `.nojekyll` | 第 0 階段完成；遊戲網址 https://garyrgb.github.io/POEEE/ |
 | 2026-10-05 | 計畫書搬進 repo 變 PLAN.md；CLAUDE.md 改成以 PLAN.md 為準 | 第 0 階段待決定清單全部完成 |
 | 2026-10-05 | Code 連上 GitHub 成功；因 Code 把 PPPOE 誤認成網路撥接 PPPoE，專案全面改名 POEEE | repo 改名 garyRGB/POEEE |
 | 2026-10-05 | 分工：chat Project 用來討論；Code 分頁用來改 repo | GitHub repo 建好（私人） |
