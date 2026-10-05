@@ -19,8 +19,11 @@
 
     // 遊戲迴圈：每 0.1 秒走一步。G.step 也給自動檢查用來快轉時間。
     G.step = dt => {
+      if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
       const m = G.spawnTick(S, dt, rules, DATA.monsters, hero.level);
       if (m) G.feed(`${m.name} 出現了`);
+      for (const k of G.combatTick(S, dt, hero)) G.feed(`擊倒 ${k.name}`);
+      if (S.dead) G.feed("你倒下了");
       G.render(S, hero);
     };
     setInterval(() => G.step(0.1), 100);

@@ -29,6 +29,7 @@ async function open(browser, url, opts = {}) {
   await page.goto(url);
   await page.waitForTimeout(300);
   if (opts.start) await startAs(page, opts.start);
+  await page.evaluate(() => { window.spawnOnly = dt => G.spawnTick(G.S, dt, DATA.rules, DATA.monsters, G.hero.level); });
   return { page, errors };
 }
 
@@ -109,7 +110,7 @@ const SELECT_CHECKS = [
   }],
 ];
 
-// #3 怪物生成：從選好角色的新頁面開始；用 G.step 快轉時間，不用真的等
+// #3 怪物生成：從選好角色的新頁面開始；用 spawnOnly 只跑生怪（不打架）快轉時間，不用真的等
 const SPAWN_CHECKS = [
   ["#3 開始後約 3 秒出現第 1 隻怪", async ({ page }) => {
     const cd = await page.evaluate(() => DATA.rules.spawnCooldownSec);
@@ -118,20 +119,20 @@ const SPAWN_CHECKS = [
     return n >= 1 || `等了 ${cd} 秒還是 ${n} 隻`;
   }],
   ["#3 一直生怪，最多 9 隻，不會超過", async ({ page }) => {
-    await page.evaluate(() => { for (let i = 0; i < 300; i++) G.step(1); });
+    await page.evaluate(() => { for (let i = 0; i < 300; i++) spawnOnly(1); G.render(G.S, G.hero); });
     const n = await page.locator("#monsters .unit.mon").count();
     const empty = await page.locator("#monsters .unit.empty").count();
     return (n === 9 && empty === 0) || `怪 ${n} 隻、空位 ${empty}`;
   }],
   ["#3 怪物格有名字、等級、血條", async ({ page }) => {
-    await page.evaluate(() => G.step(5));
+    await page.evaluate(() => { spawnOnly(5); G.render(G.S, G.hero); });
     const t = await page.locator("#monsters .unit.mon").first().innerText();
     return (t.includes("Lv1") && (await page.locator("#monsters .unit.mon .hpb").count()) >= 1) || t;
   }],
   ["#3 空出格子後，冷卻到了會補上", async ({ page }) => {
-    await page.evaluate(() => { for (let i = 0; i < 100; i++) G.step(1); G.S.monsters[4] = null; G.step(0); });
+    await page.evaluate(() => { for (let i = 0; i < 100; i++) spawnOnly(1); G.S.monsters[4] = null; spawnOnly(0); });
     const gap = await page.evaluate(() => G.S.monsters[4] === null);
-    await page.evaluate(() => G.step(DATA.rules.spawnCooldownSec));
+    await page.evaluate(() => spawnOnly(DATA.rules.spawnCooldownSec));
     const filled = await page.evaluate(() => G.S.monsters[4] !== null);
     return (gap && filled) || `空出 ${gap}、補上 ${filled}`;
   }],
@@ -158,6 +159,86 @@ const SPAWN_CHECKS = [
   }],
 ];
 
+// #4 戰鬥迴圈：手動擺怪、用 G.step 快轉
+const COMBAT_CHECKS = [
+  ["#4 角色打第 1 隻怪，每下扣攻擊力那麼多血", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, t = DATA.monsters[0];
+      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters[2] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
+      S.monsters[5] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
+      G.step(1 / h.attacksPerSec + 0.001);
+      return { a: S.monsters[2].hp, b: S.monsters[5].hp, atk: h.attack };
+    });
+    return (r.a === 1000 - r.atk && r.b === 1000) || JSON.stringify(r);
+  }],
+  ["#4 攻速照職業：10 秒內出手次數＝攻速 × 10", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, t = DATA.monsters[0];
+      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters[0] = G.makeMonster({ ...t, baseLife: 100000, baseAttack: 0 }, 1);
+      for (let i = 0; i < 100; i++) G.step(0.1);
+      return { hits: Math.round((100000 - S.monsters[0].hp) / h.attack), want: Math.floor(h.attacksPerSec * 10 + 1e-9) };
+    });
+    return Math.abs(r.hits - r.want) <= 1 || JSON.stringify(r);
+  }],
+  ["#4 在場每隻怪都會打角色：9 隻打 10 秒，扣的血 ≈ 9 × 攻擊 × 攻速 × 10", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, t = DATA.monsters[0];
+      S.spawnTimer = 999; S.hp = 100000; G.hero.maxLife = 100000;
+      S.monsters = S.monsters.map(() => G.makeMonster({ ...t, baseLife: 100000 }, 1));
+      for (let i = 0; i < 100; i++) G.step(0.1);
+      const m = S.monsters[0];
+      return { lost: 100000 - S.hp, want: 9 * m.attack * Math.floor(m.attacksPerSec * 10 + 1e-9) };
+    });
+    return Math.abs(r.lost - r.want) <= 9 || JSON.stringify(r);
+  }],
+  ["#4 打死的怪會空出格子，角色改打下一隻", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, t = DATA.monsters[0];
+      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters[0] = G.makeMonster({ ...t, baseLife: 1 }, 1);
+      S.monsters[1] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
+      for (let i = 0; i < 30; i++) G.step(0.1);
+      return { first: S.monsters[0], second: S.monsters[1].hp, target: G.targetIndex(S) };
+    });
+    return (r.first === null && r.second < 1000 && r.target === 1) || JSON.stringify(r);
+  }],
+  ["#4 畫面：血條會掉，目標怪有金框", async ({ page }) => {
+    await page.evaluate(() => { // 先擺滿 9 隻，模擬被圍住
+      for (let i = 0; i < 100; i++) spawnOnly(1);
+      for (let i = 0; i < 40; i++) G.step(0.1);
+    });
+    const hp = +(await page.locator("#heroHpText").innerText());
+    const full = await page.evaluate(() => G.hero.maxLife);
+    const gold = await page.locator("#monsters .unit.target").count();
+    return (hp < full && gold === 1) || `角色血 ${hp}/${full}、金框 ${gold}`;
+  }],
+  ["#4 角色血到 0 就倒下，整個停住，血不會變負的", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, t = DATA.monsters[0];
+      S.spawnTimer = 999;
+      S.monsters = S.monsters.map(() => G.makeMonster({ ...t, baseLife: 100000, baseAttack: 50 }, 1));
+      for (let i = 0; i < 100; i++) G.step(0.1);
+      const hpAfter = S.monsters[0].hp;
+      for (let i = 0; i < 50; i++) G.step(0.1);
+      return { hp: S.hp, dead: S.dead, frozen: S.monsters[0].hp === hpAfter };
+    });
+    const feed = await page.locator("#feed").innerText();
+    return (r.hp === 0 && r.dead && r.frozen && feed.includes("你倒下了")) || JSON.stringify(r);
+  }],
+  ["#4 新手實戰：Lv1 決鬥者放著打 20 秒還活著，而且有擊倒怪", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      let kills = 0; const orig = G.combatTick;
+      G.combatTick = (...a) => { const k = orig(...a); kills += k.length; return k; };
+      for (let i = 0; i < 200; i++) G.step(0.1);
+      G.combatTick = orig;
+      return { dead: G.S.dead, hp: G.S.hp, kills };
+    });
+    return (!r.dead && r.kills > 0) || JSON.stringify(r);
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -180,6 +261,13 @@ const SPAWN_CHECKS = [
   }
 
   for (const [name, fn] of SPAWN_CHECKS) {
+    const c = await open(browser, url, { start: "duelist" });
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of COMBAT_CHECKS) {
     const c = await open(browser, url, { start: "duelist" });
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
