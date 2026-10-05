@@ -11,7 +11,13 @@
 <script src="src/errors.js"></script>
 </head>
 <body>
-<div class="app">
+<div class="app select" id="selectScreen" hidden>
+  <div class="title"><span>選擇職業</span></div>
+  <div id="classList"></div>
+  <button class="btn gold startBtn" id="startBtn" disabled>開始</button>
+</div>
+
+<div class="app" id="game" hidden>
   <div class="top">
     <span class="name" id="heroName"></span>
     <span class="res num"><span>經驗:<b id="exp">0</b></span><span>金幣:<b id="gold">0</b></span><span>重擲石:<b id="orb">0</b></span></span>
@@ -55,11 +61,12 @@
 </div>
 
 <!-- 資料先載入，程式再載入：調數值只改 data/。程式一個系統一個檔案，放 src/ -->
-<script src="data/hero.js"></script>
+<script src="data/classes.js"></script>
 <script src="data/monsters.js"></script>
 <script src="data/rules.js"></script>
 <script src="src/state.js"></script>
 <script src="src/render.js"></script>
+<script src="src/select.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

@@ -28,7 +28,15 @@ async function open(browser, url, opts = {}) {
   if (opts.route) await page.route(opts.route.match, opts.route.handler);
   await page.goto(url);
   await page.waitForTimeout(300);
+  if (opts.start) await startAs(page, opts.start);
   return { page, errors };
+}
+
+// 選一個職業並按開始，進到主畫面
+async function startAs(page, classId) {
+  await page.locator(`.classCard[data-id="${classId}"]`).click();
+  await page.locator("#startBtn").click();
+  await page.waitForTimeout(200);
 }
 
 // ───── 檢查清單（照小任務順序累加）─────
@@ -64,16 +72,62 @@ const CHECKS = [
   ["#1 裝備 10 格", async ({ page }) => (await page.locator("#doll .slot").count()) === 10],
 ];
 
+// #2 角色選擇：每項都從剛打開的頁面開始
+const SELECT_CHECKS = [
+  ["#2 打開先看到選角畫面，主畫面藏著", async ({ page }) =>
+    (await page.locator("#selectScreen").isVisible()) && !(await page.locator("#game").isVisible())],
+  ["#2 有女巫、決鬥者兩張卡，各有介紹和數值", async ({ page }) => {
+    const t = await page.locator("#classList").innerText();
+    const n = await page.locator(".classCard").count();
+    return (n === 2 && ["女巫", "決鬥者", "生命", "攻擊", "攻速"].every(w => t.includes(w))) || `卡片 ${n} 張：${t}`;
+  }],
+  ["#2 還沒選時「開始」是灰的，按了不會進遊戲", async ({ page }) => {
+    const dis = await page.locator("#startBtn").isDisabled();
+    await page.locator("#startBtn").click({ force: true });
+    return dis && (await page.locator("#selectScreen").isVisible());
+  }],
+  ["#2 點女巫再點決鬥者，金框換到決鬥者", async ({ page }) => {
+    await page.locator('.classCard[data-id="witch"]').click();
+    await page.locator('.classCard[data-id="duelist"]').click();
+    const picked = await page.locator(".classCard.picked").getAttribute("data-id");
+    return (picked === "duelist" && (await page.locator(".classCard.picked").count()) === 1) || `選中：${picked}`;
+  }],
+  ["#2 選女巫開始：角色格寫女巫、屬性是女巫的數字", async ({ page }) => {
+    await startAs(page, "witch");
+    const w = await page.evaluate(() => DATA.classes.list.find(c => c.id === "witch"));
+    const name = await page.locator("#heroTitle").innerText();
+    const hp = await page.locator("#heroHpText").innerText();
+    const stats = await page.locator("#stats").innerText();
+    return (name === "女巫" && hp === String(w.maxLife) && stats.includes(String(w.attack))) || `${name} ${hp}`;
+  }],
+  ["#2 選決鬥者開始：角色格寫決鬥者、屬性是決鬥者的數字", async ({ page }) => {
+    await startAs(page, "duelist");
+    const d = await page.evaluate(() => DATA.classes.list.find(c => c.id === "duelist"));
+    const name = await page.locator("#heroTitle").innerText();
+    const hp = await page.locator("#heroHpText").innerText();
+    return (name === "決鬥者" && hp === String(d.maxLife)) || `${name} ${hp}`;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
   let fail = 0;
-  const ctx = await open(browser, url);
-  for (const [name, fn] of CHECKS) {
-    let r; try { r = await fn(ctx); } catch (e) { r = e.message; }
+  const report = (name, r) => {
     const ok = r === true;
     if (!ok) fail++;
     console.log(`${ok ? "✅" : "❌"} ${name}${ok ? "" : "：" + r}`);
+  };
+  const run = async (fn, ctx) => { try { return await fn(ctx); } catch (e) { return e.message.split("\n")[0]; } };
+
+  const ctx = await open(browser, url, { start: "witch" });
+  for (const [name, fn] of CHECKS) report(name, await run(fn, ctx));
+
+  for (const [name, fn] of SELECT_CHECKS) {
+    const c = await open(browser, url);
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
   }
 
   // 資料檔寫錯時，畫面要說錯在哪個檔案
@@ -81,9 +135,7 @@ const CHECKS = [
     route: { match: /data\/rules\.js$/, handler: r => r.fulfill({ contentType: "text/javascript", body: "DATA.rules = { maxMonsters: 9,, };" }) }
   });
   const msg = await broken.page.locator(".errbox").first().innerText().catch(() => "");
-  const ok = msg.includes("data/rules.js");
-  if (!ok) fail++;
-  console.log(`${ok ? "✅" : "❌"} #1 資料檔寫錯時，畫面顯示錯在哪個檔案${ok ? "" : "：" + (msg || "沒有提示")}`);
+  report("#1 資料檔寫錯時，畫面顯示錯在哪個檔案", msg.includes("data/rules.js") || msg || "沒有提示");
 
   await browser.close(); srv.close();
   console.log(fail ? `\n${fail} 項沒過，不要推。` : "\n全部通過。");

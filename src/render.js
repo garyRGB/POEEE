@@ -6,7 +6,7 @@ window.G = window.G || {};
 
   G.renderStatic = function (hero) {
     $("heroName").textContent = hero.name;
-    $("heroTitle").textContent = `${hero.name}・${hero.title}`;
+    $("heroTitle").textContent = hero.name;
     $("doll").innerHTML = SLOTS.map(n => n ? `<div class="slot"><b>${n}</b></div>` : "<div></div>").join("");
   };
 
