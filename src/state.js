@@ -6,6 +6,8 @@ G.createState = function (hero, rules) {
     exp: 0, gold: 0, orb: 0,
     potions: hero.potions,
     revives: hero.revives,
-    monsters: Array(rules.maxMonsters).fill(null) // 每格 null = 空位
+    monsters: Array(rules.maxMonsters).fill(null), // 每格 null = 空位
+    spawnCooldown: rules.spawnCooldownSec, // 目前的生怪冷卻（之後點擊會縮短）
+    spawnTimer: rules.spawnCooldownSec     // 距離下一隻怪還有幾秒
   };
 };

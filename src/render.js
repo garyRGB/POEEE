@@ -21,7 +21,7 @@ window.G = window.G || {};
     $("revives").textContent = S.revives;
 
     $("monsters").innerHTML = S.monsters.map(m => m
-      ? `<div class="unit mon"><div class="nm">${m.name}</div>
+      ? `<div class="unit mon"><div class="nm">${m.name} <small class="lvTag">Lv${m.level}</small></div>
            <div class="hpb"><i style="width:${Math.max(0, m.hp / m.maxLife * 100)}%"></i><span class="num">${Math.max(0, Math.round(m.hp))}</span></div></div>`
       : `<div class="unit empty">空位</div>`).join("");
 

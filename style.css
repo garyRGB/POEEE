@@ -99,3 +99,4 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .classStats{font-size:14px}
 .classCard.picked{border:2px solid var(--gold);padding:13px;box-shadow:0 0 0 2px var(--goldBg) inset}
 .startBtn{display:block;width:100%;margin-top:16px;padding:12px;font-size:17px}
+.unit .nm .lvTag{display:inline;font-size:10px;color:var(--soft);font-weight:500}

@@ -17,6 +17,14 @@
     G.render(S, hero);
     G.feed("等待怪物出現…");
 
+    // 遊戲迴圈：每 0.1 秒走一步。G.step 也給自動檢查用來快轉時間。
+    G.step = dt => {
+      const m = G.spawnTick(S, dt, rules, DATA.monsters, hero.level);
+      if (m) G.feed(`${m.name} 出現了`);
+      G.render(S, hero);
+    };
+    setInterval(() => G.step(0.1), 100);
+
     document.getElementById("atlasBtn").addEventListener("click", () => G.feed("輿圖之後開放"));
   });
 })();

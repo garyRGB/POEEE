@@ -109,6 +109,55 @@ const SELECT_CHECKS = [
   }],
 ];
 
+// #3 怪物生成：從選好角色的新頁面開始；用 G.step 快轉時間，不用真的等
+const SPAWN_CHECKS = [
+  ["#3 開始後約 3 秒出現第 1 隻怪", async ({ page }) => {
+    const cd = await page.evaluate(() => DATA.rules.spawnCooldownSec);
+    await page.waitForTimeout(cd * 1000 + 600);
+    const n = await page.locator("#monsters .unit.mon").count();
+    return n >= 1 || `等了 ${cd} 秒還是 ${n} 隻`;
+  }],
+  ["#3 一直生怪，最多 9 隻，不會超過", async ({ page }) => {
+    await page.evaluate(() => { for (let i = 0; i < 300; i++) G.step(1); });
+    const n = await page.locator("#monsters .unit.mon").count();
+    const empty = await page.locator("#monsters .unit.empty").count();
+    return (n === 9 && empty === 0) || `怪 ${n} 隻、空位 ${empty}`;
+  }],
+  ["#3 怪物格有名字、等級、血條", async ({ page }) => {
+    await page.evaluate(() => G.step(5));
+    const t = await page.locator("#monsters .unit.mon").first().innerText();
+    return (t.includes("Lv1") && (await page.locator("#monsters .unit.mon .hpb").count()) >= 1) || t;
+  }],
+  ["#3 空出格子後，冷卻到了會補上", async ({ page }) => {
+    await page.evaluate(() => { for (let i = 0; i < 100; i++) G.step(1); G.S.monsters[4] = null; G.step(0); });
+    const gap = await page.evaluate(() => G.S.monsters[4] === null);
+    await page.evaluate(() => G.step(DATA.rules.spawnCooldownSec));
+    const filled = await page.evaluate(() => G.S.monsters[4] !== null);
+    return (gap && filled) || `空出 ${gap}、補上 ${filled}`;
+  }],
+  ["#3 怪物強度跟等級成正比（Lv1 vs Lv5）", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const t = DATA.monsters[0], a = G.makeMonster(t, 1), b = G.makeMonster(t, 5);
+      return { a, b, t };
+    });
+    return (r.a.maxLife === r.t.baseLife && r.b.maxLife === r.t.baseLife * 5 && r.b.attack === r.t.baseAttack * 5) || JSON.stringify(r);
+  }],
+  ["#3 新手怪夠弱：Lv1 女巫、決鬥者都能 2～3 下打死", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const m = G.makeMonster(DATA.monsters[0], 1);
+      return DATA.classes.list.map(c => [c.name, Math.ceil(m.maxLife / c.attack)]);
+    });
+    return r.every(([, hits]) => hits >= 2 && hits <= 3) || r.map(x => x.join(" ") + " 下").join("、");
+  }],
+  ["#3 新手怪夠弱：被 9 隻圍住，Lv1 女巫、決鬥者都撐得過 20 秒", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const m = G.makeMonster(DATA.monsters[0], 1), dps = m.attack * m.attacksPerSec * DATA.rules.maxMonsters;
+      return DATA.classes.list.map(c => [c.name, +(c.maxLife / dps).toFixed(1)]);
+    });
+    return r.every(([, sec]) => sec >= 20) || r.map(x => x.join(" ") + " 秒").join("、");
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -125,6 +174,13 @@ const SELECT_CHECKS = [
 
   for (const [name, fn] of SELECT_CHECKS) {
     const c = await open(browser, url);
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of SPAWN_CHECKS) {
+    const c = await open(browser, url, { start: "duelist" });
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
