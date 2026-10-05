@@ -279,6 +279,54 @@ const COMBAT_CHECKS = [
   ["#4 開局自帶 5 個復活道具", async ({ page }) => (await page.locator("#revives").innerText()) === "5"],
 ];
 
+// #5 擊殺與升級
+const PROGRESS_CHECKS = [
+  ["#5 打死一隻怪：經驗 +怪物經驗、金幣在範圍內", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, m = G.makeMonster(DATA.monsters[0], 1), g0 = S.gold, e0 = S.exp;
+      G.onKill(S, G.hero, m, DATA.rules);
+      return { exp: S.exp - e0, gold: S.gold - g0, m };
+    });
+    return (r.exp === r.m.exp && r.gold >= r.m.gold[0] && r.gold <= r.m.gold[1]) || JSON.stringify(r);
+  }],
+  ["#5 經驗夠了升 Lv2：生命、攻擊變 2 倍，血回滿，經驗扣掉", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, need = G.expToNext(1, DATA.rules);
+      S.hp = 1; S.exp = need - 1;
+      G.onKill(S, h, G.makeMonster(DATA.monsters[0], 1), DATA.rules);
+      return { lv: h.level, life: h.maxLife, atk: h.attack, hp: S.hp, exp: S.exp, cls: h.cls, gain: DATA.monsters[0].baseExp };
+    });
+    return (r.lv === 2 && r.life === r.cls.maxLife * 2 && r.atk === r.cls.attack * 2 && r.hp === r.life && r.exp === r.gain - 1) || JSON.stringify(r);
+  }],
+  ["#5 升級後新出的怪是 Lv2", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; S.exp = G.expToNext(1, DATA.rules);
+      G.onKill(S, G.hero, G.makeMonster(DATA.monsters[0], 1), DATA.rules);
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(0.01);
+      G.step(0.1);
+      return S.monsters.filter(Boolean).map(m => m.level);
+    });
+    return (r.length > 0 && r.every(l => l === 2)) || JSON.stringify(r);
+  }],
+  ["#5 畫面：經驗顯示「目前/升級要的」，升級後 Lv、屬性跟著變", async ({ page }) => {
+    await page.evaluate(() => {
+      const S = G.S; S.exp = G.expToNext(1, DATA.rules);
+      G.onKill(S, G.hero, G.makeMonster(DATA.monsters[0], 1), DATA.rules); G.render(S, G.hero);
+    });
+    const exp = await page.locator("#exp").innerText();
+    const lv = await page.locator("#lv").innerText();
+    const stats = await page.locator("#stats").innerText();
+    const life = await page.evaluate(() => G.hero.maxLife);
+    return (/^\d+\/100$/.test(exp) && lv === "2" && stats.includes(String(life))) || `${exp} Lv${lv}`;
+  }],
+  ["#5 實戰：放著打一陣子會拿到經驗、金幣，戰鬥框有擊倒訊息", async ({ page }) => {
+    await page.evaluate(() => { for (let i = 0; i < 200; i++) G.step(0.1); });
+    const r = await page.evaluate(() => ({ exp: G.S.exp, gold: G.S.gold, lv: G.hero.level }));
+    const feed = await page.locator("#feed").innerText();
+    return ((r.exp > 0 || r.lv > 1) && r.gold > 0 && /擊倒|升到/.test(feed)) || JSON.stringify(r) + feed;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -312,6 +360,13 @@ const COMBAT_CHECKS = [
   for (const [title, fn] of COMBAT_CHECKS) for (const cls of title.includes(BOTH) ? ["witch", "duelist"] : ["duelist"]) {
     const c = await open(browser, url, { start: cls });
     const name = title.replace(BOTH, CLASS_NAME[cls]);
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of PROGRESS_CHECKS) {
+    const c = await open(browser, url, { start: "witch" });
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();

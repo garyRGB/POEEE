@@ -21,7 +21,8 @@
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
       for (const m of G.spawnTick(S, dt, rules, DATA.monsters, hero.level)) G.feed(`${m.name} 出現了`);
-      for (const k of G.combatTick(S, dt, hero)) G.feed(`擊倒 ${k.name}`);
+      for (const k of G.combatTick(S, dt, hero))
+        for (const msg of G.onKill(S, hero, k, rules)) G.feed(msg);
       if (S.dead) G.feed("你倒下了");
       G.render(S, hero);
     };

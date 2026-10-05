@@ -11,7 +11,7 @@ window.G = window.G || {};
   };
 
   G.render = function (S, hero) {
-    $("exp").textContent = S.exp;
+    $("exp").textContent = `${S.exp}/${G.expToNext(hero.level, DATA.rules)}`;
     $("gold").textContent = S.gold;
     $("orb").textContent = S.orb;
     $("lv").textContent = hero.level;

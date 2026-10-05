@@ -25,7 +25,7 @@ G.showSelect = function (classes, onStart) {
   startBtn.onclick = () => {
     if (!picked) return;
     screen.hidden = true;
-    onStart({ ...classes.base, ...picked });
+    onStart({ ...classes.base, ...picked, cls: { ...picked } }); // cls 留著 Lv1 數值，升級時用
   };
   screen.hidden = false;
 };
