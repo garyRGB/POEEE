@@ -356,6 +356,55 @@ const TAP_CHECKS = [
   }],
 ];
 
+// #7 自動喝水：規則照 data/rules.js 的 autoRules
+const POTION_CHECKS = [
+  ["#7 血量低於 40% 自動喝 1 瓶，補最大生命的 potionHealPct %", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      const p0 = S.potions; S.hp = Math.floor(h.maxLife * 0.39);
+      const before = S.hp; G.step(0.1);
+      return { used: p0 - S.potions, gain: S.hp - before, want: Math.round(h.maxLife * h.potionHealPct / 100) };
+    });
+    return (r.used === 1 && r.gain === r.want) || JSON.stringify(r);
+  }],
+  ["#7 血量在 40% 以上不會喝", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      const p0 = S.potions; S.hp = Math.ceil(h.maxLife * 0.41); G.step(0.1);
+      return p0 - S.potions;
+    });
+    return r === 0 || `喝了 ${r} 瓶`;
+  }],
+  ["#7 藥水用完就不喝，也不會出錯", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      S.potions = 0; S.hp = 1; G.step(0.1);
+      return { potions: S.potions, hp: S.hp };
+    });
+    return (r.potions === 0 && r.hp === 1) || JSON.stringify(r);
+  }],
+  ["#7 門檻照資料檔：改成 60% 就在 59% 喝", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      DATA.rules.autoRules[0].value = 60;
+      const p0 = S.potions; S.hp = Math.floor(h.maxLife * 0.59); G.step(0.1);
+      return p0 - S.potions;
+    });
+    return r === 1 || `喝了 ${r} 瓶`;
+  }],
+  ["#7 畫面：藥水數字減少、戰鬥框出現「自動喝藥水」；沒有手動喝水按鈕", async ({ page }) => {
+    await page.evaluate(() => { const S = G.S; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999); S.hp = 1; G.step(0.1); });
+    const pot = await page.locator("#potions").innerText();
+    const feed = await page.locator("#feed").innerText();
+    const btn = await page.locator("#game button", { hasText: "藥水" }).count();
+    return (pot === "4" && feed.includes("自動喝藥水") && btn === 0) || `藥水 ${pot}、按鈕 ${btn}、${feed}`;
+  }],
+  ["#7 實戰：女巫、決鬥者放置 3 分鐘會自動喝到藥水", async ({ page }) => {
+    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 1800; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
+    return r.used > 0 || JSON.stringify(r);
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -403,6 +452,14 @@ const TAP_CHECKS = [
 
   for (const [name, fn] of TAP_CHECKS) {
     const c = await open(browser, url, { start: "duelist" });
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of POTION_CHECKS) for (const cls of title.includes(BOTH) ? ["witch", "duelist"] : ["witch"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = title.replace(BOTH, CLASS_NAME[cls]);
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
