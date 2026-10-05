@@ -1,4 +1,4 @@
-// 自動規則：照 data/rules.js 的 autoRules（{ when, value, do }）自動執行。不碰畫面。
+// 自動規則：照玩家的自動規則（預設來自 data/rules.js 的 autoRules，{ when, value, do }）自動執行。不碰畫面。
 // 要加新規則 = 在 WHEN 或 DO 加一種，再到 data/rules.js 寫一筆。
 window.G = window.G || {};
 (function () {
@@ -20,7 +20,7 @@ window.G = window.G || {};
   G.autoRulesTick = function (S, hero, rules) {
     const msgs = [];
     if (S.dead) return msgs;
-    for (const r of rules.autoRules) {
+    for (const r of S.autoRules) {
       const when = WHEN[r.when], act = DO[r.do];
       if (!when || !act) { reportError(`data/rules.js 的自動規則看不懂：${JSON.stringify(r)}`); continue; }
       if (when(S, hero, r.value)) { const m = act(S, hero); if (m) msgs.push(m); }

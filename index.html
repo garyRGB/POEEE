@@ -43,10 +43,10 @@
   <div class="rounds">
     <button class="round" disabled>背包</button>
     <button class="round" disabled>天賦</button>
-    <button class="round" disabled>自動</button>
+    <button class="round" id="autoBtn" disabled>自動</button>
     <button class="round" disabled>商店</button>
   </div>
-  <p class="hint">背包、天賦、自動、商店之後的階段才開放。</p>
+  <p class="hint">背包、天賦、商店之後的階段才開放。</p>
 
   <div class="title"><span>角色屬性</span></div>
   <div class="panel"><div class="stats num" id="stats"></div></div>
@@ -57,6 +57,17 @@
   <div class="bottom">
     <button class="btn line" disabled>戰鬥紀錄</button>
     <button class="btn line" disabled>任務</button>
+  </div>
+</div>
+
+<!-- 「自動」頁面（src/autoPanel.js） -->
+<div class="sheet" id="autoSheet" hidden>
+  <div class="box">
+    <h3>自動規則</h3>
+    <label class="autoRow">生命低於 <input id="potPct" type="text" inputmode="numeric" maxlength="2" autocomplete="off"> % 自動喝藥水</label>
+    <p class="hint" id="potHint"></p>
+    <p class="hint">還沒有存檔功能，重新整理會回到預設值。</p>
+    <div class="acts"><button class="btn line" id="autoClose">關閉</button></div>
   </div>
 </div>
 
@@ -72,6 +83,7 @@
 <script src="src/progress.js"></script>
 <script src="src/tap.js"></script>
 <script src="src/autoRules.js"></script>
+<script src="src/autoPanel.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

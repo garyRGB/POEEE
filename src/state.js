@@ -9,6 +9,7 @@ G.createState = function (hero, rules) {
     potions: hero.potions,
     revives: hero.revives,
     monsters: Array(rules.maxMonsters).fill(null), // 每格 null = 空位
-    slotTimers: G.firstTimers(rules) // 每格距離出怪還有幾秒（有怪的格子是 null）
+    slotTimers: G.firstTimers(rules), // 每格距離出怪還有幾秒（有怪的格子是 null）
+    autoRules: rules.autoRules.map(r => ({ ...r })) // 玩家自己的自動規則（預設值來自 data/rules.js，可在「自動」頁面改）
   };
 };

@@ -102,3 +102,11 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .unit .nm .lvTag{display:inline;font-size:10px;color:var(--soft);font-weight:500}
 .unit.mon.target{border:2px solid var(--gold);padding:2px}
 #battle{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;user-select:none;-webkit-user-select:none} /* 狂點不會放大、不會選到字 */
+
+/* 彈出頁（自動規則等） */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.box{background:var(--panel);border:1px solid var(--line);border-bottom:0;width:100%;max-width:460px;max-height:85%;overflow:auto;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));border-radius:8px 8px 0 0}
+.box h3{font-size:18px;margin-bottom:10px}
+.acts{display:flex;gap:8px;margin-top:12px}
+.autoRow{display:flex;align-items:center;gap:6px;font-size:16px}
+.autoRow input{width:56px;font:inherit;font-size:16px;text-align:center;padding:6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}

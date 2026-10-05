@@ -3,7 +3,7 @@ window.G = window.G || {};
 (function () {
   const randInt = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
 
-  G.expToNext = (level, rules) => rules.levelExpBase * level;
+  G.expToNext = (level, rules) => rules.levelExpBase * level * level; // 50 × 等級²
 
   // 角色的生命、攻擊 = 職業 Lv1 數值 × 等級
   G.applyLevel = function (hero) {

@@ -217,7 +217,7 @@ const COMBAT_CHECKS = [
       S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
       S.monsters[0] = G.makeMonster({ ...t, baseLife: 1 }, 1);
       S.monsters[1] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
-      for (let i = 0; i < 30; i++) G.step(0.1);
+      for (let i = 0; i < 20; i++) G.step(0.1); // 2 秒：第 1 隻已死，空格最快 2 秒才補，第 2 隻已挨打
       return { first: S.monsters[0], second: S.monsters[1].hp, target: G.targetIndex(S) };
     });
     return (r.first === null && r.second < 1000 && r.target === 1) || JSON.stringify(r);
@@ -317,7 +317,8 @@ const PROGRESS_CHECKS = [
     const lv = await page.locator("#lv").innerText();
     const stats = await page.locator("#stats").innerText();
     const life = await page.evaluate(() => G.hero.maxLife);
-    return (/^\d+\/100$/.test(exp) && lv === "2" && stats.includes(String(life))) || `${exp} Lv${lv}`;
+    const need = await page.evaluate(() => G.expToNext(2, DATA.rules));
+    return (new RegExp(`^\\d+/${need}$`).test(exp) && lv === "2" && stats.includes(String(life))) || `${exp} Lv${lv}`;
   }],
   ["#5 實戰：放著打一陣子會拿到經驗、金幣，戰鬥框有擊倒訊息", async ({ page }) => {
     await page.evaluate(() => { for (let i = 0; i < 200; i++) G.step(0.1); });
@@ -383,14 +384,37 @@ const POTION_CHECKS = [
     });
     return (r.potions === 0 && r.hp === 1) || JSON.stringify(r);
   }],
-  ["#7 門檻照資料檔：改成 60% 就在 59% 喝", async ({ page }) => {
+  ["#7 預設門檻來自資料檔（40%）", async ({ page }) =>
+    (await page.evaluate(() => G.S.autoRules[0].value === DATA.rules.autoRules[0].value && DATA.rules.autoRules[0].value === 40))],
+  ["#7 「自動」頁面：文字框輸入 60，就在 59% 喝", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const shown = await page.locator("#potPct").inputValue();
+    await page.locator("#potPct").fill("60");
+    await page.locator("#autoClose").click();
     const r = await page.evaluate(() => {
       const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
-      DATA.rules.autoRules[0].value = 60;
       const p0 = S.potions; S.hp = Math.floor(h.maxLife * 0.59); G.step(0.1);
-      return p0 - S.potions;
+      return { used: p0 - S.potions, value: S.autoRules[0].value };
     });
-    return r === 1 || `喝了 ${r} 瓶`;
+    return (shown === "40" && r.used === 1 && r.value === 60) || JSON.stringify({ shown, ...r });
+  }],
+  ["#7 「自動」頁面：打錯（abc、0、空白）會保留原本的數字並提示；最多只能打 2 位數", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const bad = [];
+    for (const v of ["abc", "0", ""]) {
+      await page.locator("#potPct").fill(v);
+      await page.locator("#potPct").dispatchEvent("change");
+      const now = await page.locator("#potPct").inputValue();
+      const hint = await page.locator("#potHint").innerText();
+      if (now !== "40" || !hint.includes("1～99")) bad.push(`${v || "空白"}→${now}`);
+    }
+    const max = await page.locator("#potPct").getAttribute("maxlength");
+    if (max !== "2") bad.push(`maxlength=${max}`);
+    return bad.length === 0 || bad.join("、");
+  }],
+  ["#7 「自動」頁面：手機會跳數字鍵盤、字夠大不會被放大", async ({ page }) => {
+    const r = await page.locator("#potPct").evaluate(el => ({ mode: el.inputMode, size: parseFloat(getComputedStyle(el).fontSize) }));
+    return (r.mode === "numeric" && r.size >= 16) || JSON.stringify(r);
   }],
   ["#7 畫面：藥水數字減少、戰鬥框出現「自動喝藥水」；沒有手動喝水按鈕", async ({ page }) => {
     await page.evaluate(() => { const S = G.S; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999); S.hp = 1; G.step(0.1); });
@@ -399,8 +423,8 @@ const POTION_CHECKS = [
     const btn = await page.locator("#game button", { hasText: "藥水" }).count();
     return (pot === "4" && feed.includes("自動喝藥水") && btn === 0) || `藥水 ${pot}、按鈕 ${btn}、${feed}`;
   }],
-  ["#7 實戰：女巫、決鬥者放置 3 分鐘會自動喝到藥水", async ({ page }) => {
-    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 1800; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
+  ["#7 實戰：女巫、決鬥者放置 12 分鐘內會自動喝到藥水", async ({ page }) => {
+    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 7200; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
     return r.used > 0 || JSON.stringify(r);
   }],
 ];

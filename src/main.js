@@ -18,6 +18,8 @@
     G.feed("等待怪物出現…");
 
     // 遊戲迴圈：每 0.1 秒走一步。G.step 也給自動檢查用來快轉時間。
+    G.setupAutoPanel(S);
+
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
       for (const m of G.spawnTick(S, dt, rules, DATA.monsters, hero.level)) G.feed(`${m.name} 出現了`);
