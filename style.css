@@ -101,3 +101,4 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .startBtn{display:block;width:100%;margin-top:16px;padding:12px;font-size:17px}
 .unit .nm .lvTag{display:inline;font-size:10px;color:var(--soft);font-weight:500}
 .unit.mon.target{border:2px solid var(--gold);padding:2px}
+#battle{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;user-select:none;-webkit-user-select:none} /* 狂點不會放大、不會選到字 */

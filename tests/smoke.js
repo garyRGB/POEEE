@@ -327,6 +327,35 @@ const PROGRESS_CHECKS = [
   }],
 ];
 
+// #6 點擊加速
+const TAP_CHECKS = [
+  ["#6 點戰鬥框一下，每個空格的倒數都少 tapReduceSec 秒", async ({ page }) => {
+    await page.evaluate(() => { G.S.monsters = G.S.monsters.map(() => null); G.S.slotTimers.fill(5); });
+    await page.locator("#battle .feed").click();
+    const r = await page.evaluate(() => ({ t: G.S.slotTimers, cut: DATA.rules.tapReduceSec }));
+    const want = 5 - r.cut;
+    return r.t.every(x => x <= want + 0.001 && x > want - 0.3) || JSON.stringify(r);
+  }],
+  ["#6 有怪的格子不受影響", async ({ page }) => {
+    await page.evaluate(() => { G.S.slotTimers.fill(999); for (let i = 0; i < 9; i++) if (i !== 3) G.S.slotTimers[i] = 0; G.step(0.1); G.S.slotTimers[3] = 5; });
+    await page.locator("#battle .feed").click();
+    const r = await page.evaluate(() => ({ t: G.S.slotTimers, n: G.S.monsters.filter(Boolean).length }));
+    return (r.n === 8 && r.t.every((x, i) => i === 3 ? x < 5 : x == null)) || JSON.stringify(r);
+  }],
+  ["#6 狂點會讓怪馬上出現", async ({ page }) => {
+    await page.evaluate(() => { G.S.monsters = G.S.monsters.map(() => null); G.S.slotTimers.fill(3); });
+    for (let i = 0; i < 7; i++) await page.locator("#battle .feed").click();
+    await page.waitForTimeout(250);
+    return (await page.locator("#monsters .unit.mon").count()) === 9;
+  }],
+  ["#6 按輿圖按鈕不會加速", async ({ page }) => {
+    await page.evaluate(() => { G.S.monsters = G.S.monsters.map(() => null); G.S.slotTimers.fill(5); });
+    await page.locator("#atlasBtn").click({ force: true });
+    const t = await page.evaluate(() => G.S.slotTimers[0]);
+    return t > 4.7 || `倒數變 ${t}`;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -367,6 +396,13 @@ const PROGRESS_CHECKS = [
 
   for (const [name, fn] of PROGRESS_CHECKS) {
     const c = await open(browser, url, { start: "witch" });
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of TAP_CHECKS) {
+    const c = await open(browser, url, { start: "duelist" });
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();

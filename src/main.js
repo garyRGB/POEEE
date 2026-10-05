@@ -29,5 +29,12 @@
     setInterval(() => G.step(0.1), 100);
 
     document.getElementById("atlasBtn").addEventListener("click", () => G.feed("輿圖之後開放"));
+
+    // 點戰鬥框任何地方（輿圖按鈕除外）＝所有空格倒數一起減少
+    document.getElementById("battle").addEventListener("click", e => {
+      if (e.target.closest("#atlasBtn") || S.dead) return;
+      G.tapSpeedUp(S, rules);
+      G.render(S, hero);
+    });
   });
 })();
