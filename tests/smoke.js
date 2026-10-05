@@ -112,11 +112,15 @@ const SELECT_CHECKS = [
 
 // #3 怪物生成：從選好角色的新頁面開始；用 spawnOnly 只跑生怪（不打架）快轉時間，不用真的等
 const SPAWN_CHECKS = [
-  ["#3 開始後約 3 秒出現第 1 隻怪", async ({ page }) => {
-    const cd = await page.evaluate(() => DATA.rules.spawnCooldownSec);
-    await page.waitForTimeout(cd * 1000 + 600);
-    const n = await page.locator("#monsters .unit.mon").count();
-    return n >= 1 || `等了 ${cd} 秒還是 ${n} 隻`;
+  ["#3 開局每格各自倒數（在 firstSpawnSec 範圍內），空格顯示剩幾秒", async ({ page }) => {
+    const r = await page.evaluate(() => ({ t: G.S.slotTimers, range: DATA.rules.firstSpawnSec }));
+    const txt = await page.locator("#monsters .unit.empty").first().innerText();
+    const ok = r.t.every(x => x != null && x <= r.range[1] && x >= r.range[0] - 1);
+    return (ok && txt.includes("秒")) || `${JSON.stringify(r)} / ${txt}`;
+  }],
+  ["#3 等到 firstSpawnSec 上限，9 格都出過怪", async ({ page }) => {
+    await page.evaluate(() => { spawnOnly(DATA.rules.firstSpawnSec[1] + 0.1); G.render(G.S, G.hero); });
+    return (await page.locator("#monsters .unit.mon").count()) === 9;
   }],
   ["#3 一直生怪，最多 9 隻，不會超過", async ({ page }) => {
     await page.evaluate(() => { for (let i = 0; i < 300; i++) spawnOnly(1); G.render(G.S, G.hero); });
@@ -125,16 +129,30 @@ const SPAWN_CHECKS = [
     return (n === 9 && empty === 0) || `怪 ${n} 隻、空位 ${empty}`;
   }],
   ["#3 怪物格有名字、等級、血條", async ({ page }) => {
-    await page.evaluate(() => { spawnOnly(5); G.render(G.S, G.hero); });
+    await page.evaluate(() => { spawnOnly(DATA.rules.firstSpawnSec[1] + 0.1); G.render(G.S, G.hero); });
     const t = await page.locator("#monsters .unit.mon").first().innerText();
     return (t.includes("Lv1") && (await page.locator("#monsters .unit.mon .hpb").count()) >= 1) || t;
   }],
   ["#3 空出格子後，冷卻到了會補上", async ({ page }) => {
     await page.evaluate(() => { for (let i = 0; i < 100; i++) spawnOnly(1); G.S.monsters[4] = null; spawnOnly(0); });
     const gap = await page.evaluate(() => G.S.monsters[4] === null);
-    await page.evaluate(() => spawnOnly(DATA.rules.spawnCooldownSec));
+    const t = await page.evaluate(() => G.S.slotTimers[4]);
+    const [lo, hi] = await page.evaluate(() => DATA.rules.slotCooldownSec);
+    await page.evaluate(() => spawnOnly(DATA.rules.slotCooldownSec[1] + 0.1));
     const filled = await page.evaluate(() => G.S.monsters[4] !== null);
-    return (gap && filled) || `空出 ${gap}、補上 ${filled}`;
+    return (gap && t >= lo && t <= hi && filled) || `空出 ${gap}、倒數 ${t}、補上 ${filled}`;
+  }],
+  ["#3 每格獨立：兩格不同時間空出，各自倒數、各自補上", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; spawnOnly(100);                // 先擺滿
+      S.monsters[0] = null; spawnOnly(0);           // 第 0 格先空
+      S.slotTimers[0] = 10;
+      spawnOnly(4); S.monsters[8] = null; spawnOnly(0); // 4 秒後第 8 格才空
+      S.slotTimers[8] = 10;
+      spawnOnly(6.1);                               // 第 0 格滿 10 秒 → 補上；第 8 格才過 6 秒
+      return { a: S.monsters[0] !== null, b: S.monsters[8] === null, tb: S.slotTimers[8] };
+    });
+    return (r.a && r.b && Math.abs(r.tb - 3.9) < 0.01) || JSON.stringify(r);
   }],
   ["#3 怪物強度跟等級成正比（Lv1 vs Lv5）", async ({ page }) => {
     const r = await page.evaluate(() => {
@@ -164,7 +182,7 @@ const COMBAT_CHECKS = [
   ["#4 角色打第 1 隻怪，每下扣攻擊力那麼多血", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, h = G.hero, t = DATA.monsters[0];
-      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
       S.monsters[2] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
       S.monsters[5] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
       G.step(1 / h.attacksPerSec + 0.001);
@@ -175,7 +193,7 @@ const COMBAT_CHECKS = [
   ["#4 攻速照職業：10 秒內出手次數＝攻速 × 10", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, h = G.hero, t = DATA.monsters[0];
-      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
       S.monsters[0] = G.makeMonster({ ...t, baseLife: 100000, baseAttack: 0 }, 1);
       for (let i = 0; i < 100; i++) G.step(0.1);
       return { hits: Math.round((100000 - S.monsters[0].hp) / h.attack), want: Math.floor(h.attacksPerSec * 10 + 1e-9) };
@@ -185,7 +203,7 @@ const COMBAT_CHECKS = [
   ["#4 在場每隻怪都會打角色：9 隻打 10 秒，扣的血 ≈ 9 × 攻擊 × 攻速 × 10", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, t = DATA.monsters[0];
-      S.spawnTimer = 999; S.hp = 100000; G.hero.maxLife = 100000;
+      S.slotTimers.fill(999); S.hp = 100000; G.hero.maxLife = 100000;
       S.monsters = S.monsters.map(() => G.makeMonster({ ...t, baseLife: 100000 }, 1));
       for (let i = 0; i < 100; i++) G.step(0.1);
       const m = S.monsters[0];
@@ -196,7 +214,7 @@ const COMBAT_CHECKS = [
   ["#4 打死的怪會空出格子，角色改打下一隻", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, t = DATA.monsters[0];
-      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999;
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
       S.monsters[0] = G.makeMonster({ ...t, baseLife: 1 }, 1);
       S.monsters[1] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
       for (let i = 0; i < 30; i++) G.step(0.1);
@@ -217,7 +235,7 @@ const COMBAT_CHECKS = [
   ["#4 角色血到 0 就倒下，整個停住，血不會變負的", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, t = DATA.monsters[0];
-      S.spawnTimer = 999;
+      S.slotTimers.fill(999);
       S.monsters = S.monsters.map(() => G.makeMonster({ ...t, baseLife: 100000, baseAttack: 50 }, 1));
       for (let i = 0; i < 100; i++) G.step(0.1);
       const hpAfter = S.monsters[0].hp;
@@ -240,7 +258,7 @@ const COMBAT_CHECKS = [
   ["#4 怪物出現後約 firstAttackSec 秒打第一下", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, t = DATA.monsters[0];
-      S.monsters = S.monsters.map(() => null); S.spawnTimer = 999; G.hero.attacksPerSec = 0.0001;
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999); G.hero.attacksPerSec = 0.0001;
       S.monsters[0] = G.makeMonster(t, 1);
       const full = S.hp;
       for (let i = 0; i < Math.round(t.firstAttackSec * 10) - 1; i++) G.step(0.1);

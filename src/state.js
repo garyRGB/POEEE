@@ -9,7 +9,6 @@ G.createState = function (hero, rules) {
     potions: hero.potions,
     revives: hero.revives,
     monsters: Array(rules.maxMonsters).fill(null), // 每格 null = 空位
-    spawnCooldown: rules.spawnCooldownSec, // 目前的生怪冷卻（之後點擊會縮短）
-    spawnTimer: rules.spawnCooldownSec     // 距離下一隻怪還有幾秒
+    slotTimers: G.firstTimers(rules) // 每格距離出怪還有幾秒（有怪的格子是 null）
   };
 };

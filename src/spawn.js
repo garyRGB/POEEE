@@ -16,17 +16,26 @@ window.G = window.G || {};
     };
   };
 
-  // 每次遊戲迴圈呼叫：有空格才倒數冷卻，時間到就補一隻。
-  // 滿格時冷卻停在最大值，空出格子後要等滿一次冷卻（這樣點擊加速才有用）。
+  const rand = ([a, b]) => a + Math.random() * (b - a);
+
+  // 每次遊戲迴圈呼叫：每個空格各自倒數，倒到 0 就在那格出 1 隻怪。
+  // 格子剛空出來（例如怪被打死）時，重新抽一個 slotCooldownSec 範圍內的秒數。
+  // 回傳這一步出現的怪（可能好幾隻）。
   G.spawnTick = function (S, dt, rules, types, level) {
-    const slot = S.monsters.indexOf(null);
-    if (slot < 0) { S.spawnTimer = S.spawnCooldown; return null; }
-    S.spawnTimer = Math.max(0, S.spawnTimer - dt);
-    if (S.spawnTimer > 0) return null;
-    const type = types[Math.floor(Math.random() * types.length)];
-    const m = G.makeMonster(type, level);
-    S.monsters[slot] = m;
-    S.spawnTimer = S.spawnCooldown;
-    return m;
+    const born = [];
+    S.monsters.forEach((m, i) => {
+      if (m) { S.slotTimers[i] = null; return; }
+      if (S.slotTimers[i] == null) S.slotTimers[i] = rand(rules.slotCooldownSec);
+      S.slotTimers[i] -= dt;
+      if (S.slotTimers[i] > 0) return;
+      const type = types[Math.floor(Math.random() * types.length)];
+      S.monsters[i] = G.makeMonster(type, level);
+      S.slotTimers[i] = null;
+      born.push(S.monsters[i]);
+    });
+    return born;
   };
+
+  // 開局：每格第一隻怪的倒數
+  G.firstTimers = rules => Array.from({ length: rules.maxMonsters }, () => rand(rules.firstSpawnSec));
 })();
