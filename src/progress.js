@@ -5,13 +5,15 @@ window.G = window.G || {};
 
   G.expToNext = (level, rules) => rules.levelExpBase * level * level; // 50 × 等級²
 
-  // 角色的生命、攻擊 = 職業 Lv1 數值 × 等級
+  // 角色的生命、攻擊、魔力、回魔 = 職業 Lv1 數值 × 等級
   G.applyLevel = function (hero) {
     hero.maxLife = hero.cls.maxLife * hero.level;
     hero.attack = hero.cls.attack * hero.level;
+    hero.maxMana = hero.cls.maxMana * hero.level;
+    hero.manaRegen = hero.cls.manaRegen * hero.level;
   };
 
-  // 打死一隻怪：給經驗、金幣；經驗夠就升級（升級回滿血）。回傳要顯示的訊息。
+  // 打死一隻怪：給經驗、金幣；經驗夠就升級（升級回滿生命、魔力）。回傳要顯示的訊息。
   G.onKill = function (S, hero, m, rules) {
     const gold = randInt(m.gold);
     S.exp += m.exp;
@@ -22,7 +24,8 @@ window.G = window.G || {};
       hero.level++;
       G.applyLevel(hero);
       S.hp = hero.maxLife;
-      msgs.push(`升到 Lv ${hero.level}！生命回滿`);
+      S.mp = hero.maxMana;
+      msgs.push(`升到 Lv ${hero.level}！生命、魔力回滿`);
     }
     return msgs;
   };

@@ -211,6 +211,18 @@ const COMBAT_CHECKS = [
     });
     return Math.abs(r.lost - r.want) <= 9 || JSON.stringify(r);
   }],
+  ["#4 鎖定目標：打到一半時前面的格子冒新怪，角色不換目標", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, t = DATA.monsters[0];
+      S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      S.monsters[5] = G.makeMonster({ ...t, baseLife: 1000 }, 1);
+      G.step(1 / h.attacksPerSec + 0.001);              // 先打 slot 5 一下
+      S.monsters[0] = G.makeMonster({ ...t, baseLife: 1000 }, 1); // 前面冒新怪
+      G.step(1 / h.attacksPerSec + 0.001);
+      return { a: S.monsters[0].hp, b: S.monsters[5].hp, atk: h.attack, target: G.targetIndex(S) };
+    });
+    return (r.a === 1000 && r.b === 1000 - 2 * r.atk && r.target === 5) || JSON.stringify(r);
+  }],
   ["#4 打死的怪會空出格子，角色改打下一隻", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, t = DATA.monsters[0];
@@ -429,6 +441,52 @@ const POTION_CHECKS = [
   }],
 ];
 
+// #8 魔力
+const MANA_CHECKS = [
+  ["#8 魔力條在血條正下方（藍色），等級在名字右邊", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const hero = document.querySelector(".unit.hero");
+      const bars = [...hero.querySelectorAll(".hpb")];
+      const title = hero.querySelector(".nm");
+      return {
+        order: bars.map(b => b.querySelector("i").id).join(","),
+        mpColor: getComputedStyle(document.getElementById("heroMp")).backgroundColor,
+        hpColor: getComputedStyle(document.getElementById("heroHp")).backgroundColor,
+        lvInTitle: title.contains(document.getElementById("lv")),
+        titleText: title.innerText,
+        lvBelow: [...hero.children].some(el => el.tagName === "SMALL")
+      };
+    });
+    return (r.order === "heroHp,heroMp" && r.mpColor !== r.hpColor && r.lvInTitle && /Lv1$/.test(r.titleText.replace(/\s/g, "")) && !r.lvBelow) || JSON.stringify(r);
+  }],
+  ["#8 開局魔力是滿的（照職業資料）", async ({ page }) => {
+    const r = await page.evaluate(() => ({ mp: G.S.mp, max: G.hero.maxMana, text: document.getElementById("heroMpText").innerText }));
+    return (r.mp === r.max && r.text === String(r.max)) || JSON.stringify(r);
+  }],
+  ["#8 每秒回魔：魔力歸零後 10 秒回到 回魔 × 10（不超過上限）", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.monsters = S.monsters.map(() => null); S.slotTimers.fill(999);
+      S.mp = 0; for (let i = 0; i < 100; i++) G.step(0.1);
+      const after10 = S.mp;
+      for (let i = 0; i < 1000; i++) G.step(0.1);
+      return { after10, want: Math.min(h.maxMana, h.manaRegen * 10), capped: S.mp, max: h.maxMana };
+    });
+    return (Math.abs(r.after10 - r.want) < 0.01 && r.capped === r.max) || JSON.stringify(r);
+  }],
+  ["#8 升級時魔力回滿，最大魔力、回魔 × 等級", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; S.mp = 0; S.exp = G.expToNext(1, DATA.rules);
+      G.onKill(S, h, G.makeMonster(DATA.monsters[0], 1), DATA.rules);
+      return { lv: h.level, mp: S.mp, max: h.maxMana, regen: h.manaRegen, cls: h.cls };
+    });
+    return (r.lv === 2 && r.max === r.cls.maxMana * 2 && r.regen === r.cls.manaRegen * 2 && r.mp === r.max) || JSON.stringify(r);
+  }],
+  ["#8 角色屬性有魔力、回魔", async ({ page }) => {
+    const t = await page.locator("#stats").innerText();
+    return (t.includes("魔力") && t.includes("回魔")) || t;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -485,6 +543,13 @@ const POTION_CHECKS = [
     const c = await open(browser, url, { start: cls });
     const name = title.replace(BOTH, CLASS_NAME[cls]);
     report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of MANA_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    report(`${name}（${CLASS_NAME[cls]}）`, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
   }

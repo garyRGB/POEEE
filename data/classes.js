@@ -1,5 +1,5 @@
 // 職業資料。加職業 = 在 list 多加一筆；調數值只改這裡。
-// 生命、攻擊是 Lv 1 的數字；升級後 = 這裡的數字 × 等級（跟怪物一樣成正比）。
+// 生命、攻擊、魔力、回魔是 Lv 1 的數字；升級後 = 這裡的數字 × 等級（跟怪物一樣成正比）。
 window.DATA = window.DATA || {};
 DATA.classes = {
   // 所有職業共用的開局數值
@@ -17,7 +17,9 @@ DATA.classes = {
       desc: "施法者。每下打得重，但生命低、出手慢。",
       maxLife: 80,
       attack: 12,
-      attacksPerSec: 0.8
+      attacksPerSec: 0.8,
+      maxMana: 60,        // 最大魔力（放技能時消耗，技能是 #9）
+      manaRegen: 2        // 每秒回魔
     },
     {
       id: "duelist",
@@ -25,7 +27,9 @@ DATA.classes = {
       desc: "近戰劍客。生命高、出手快，每下比較輕。",
       maxLife: 120,
       attack: 7,
-      attacksPerSec: 1.3
+      attacksPerSec: 1.3,
+      maxMana: 40,
+      manaRegen: 1.5
     }
   ]
 };

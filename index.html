@@ -27,9 +27,9 @@
   <div class="panel" id="battle">
     <div class="field">
       <div class="unit hero">
-        <div class="nm m" id="heroTitle"></div>
+        <div class="nm m"><span id="heroTitle"></span> <small class="lvTag">Lv<span id="lv"></span></small></div>
         <div class="hpb"><i id="heroHp"></i><span id="heroHpText" class="num"></span></div>
-        <small>Lv <span id="lv"></span></small>
+        <div class="hpb mpb"><i id="heroMp"></i><span id="heroMpText" class="num"></span></div>
       </div>
       <div class="monsters" id="monsters"></div>
     </div>
@@ -82,6 +82,7 @@
 <script src="src/combat.js"></script>
 <script src="src/progress.js"></script>
 <script src="src/tap.js"></script>
+<script src="src/mana.js"></script>
 <script src="src/autoRules.js"></script>
 <script src="src/autoPanel.js"></script>
 <script src="src/main.js"></script>

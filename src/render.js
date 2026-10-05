@@ -17,6 +17,8 @@ window.G = window.G || {};
     $("lv").textContent = hero.level;
     $("heroHp").style.width = Math.max(0, S.hp / hero.maxLife * 100) + "%";
     $("heroHpText").textContent = Math.max(0, Math.round(S.hp));
+    $("heroMp").style.width = Math.max(0, S.mp / hero.maxMana * 100) + "%";
+    $("heroMpText").textContent = Math.floor(S.mp);
     $("potions").textContent = S.potions;
     $("revives").textContent = S.revives;
 
@@ -29,7 +31,8 @@ window.G = window.G || {};
     $("stats").innerHTML = [
       ["攻擊", hero.attack], ["生命", hero.maxLife],
       ["攻速", hero.attacksPerSec.toFixed(2) + "/秒"], ["護甲", hero.armor],
-      ["每秒傷害", (hero.attack * hero.attacksPerSec).toFixed(1)], ["藥水回復", hero.potionHealPct + "%"]
+      ["每秒傷害", (hero.attack * hero.attacksPerSec).toFixed(1)], ["藥水回復", hero.potionHealPct + "%"],
+      ["魔力", hero.maxMana], ["回魔", hero.manaRegen + "/秒"]
     ].map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("");
   };
 

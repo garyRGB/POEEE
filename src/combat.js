@@ -1,9 +1,15 @@
 // 戰鬥：只負責「誰打誰、扣多少血」。不碰畫面、不發獎勵。
-// 角色打最前面那隻活著的怪；在場每隻怪都會打角色。
+// 角色鎖定一隻怪打到死，再換格子順序第 1 隻活著的怪；在場每隻怪都會打角色。
 window.G = window.G || {};
 (function () {
-  // 目前的目標：格子順序第 1 隻還活著的怪
-  G.targetIndex = S => S.monsters.findIndex(m => m && m.hp > 0);
+  // 目前的目標：正在打的那隻還活著就繼續打；打死了才換格子順序第 1 隻活著的怪
+  G.targetIndex = S => {
+    const cur = S.monsters[S.target];
+    if (S.target != null && cur && cur.hp > 0) return S.target;
+    const i = S.monsters.findIndex(m => m && m.hp > 0);
+    S.target = i < 0 ? null : i;
+    return i;
+  };
 
   // 回傳這一步被打死的怪（之後 #5 拿去發經驗、金幣）
   G.combatTick = function (S, dt, hero) {

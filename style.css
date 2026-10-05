@@ -1,5 +1,6 @@
 /* 顏色與排版沿用介面樣板 ui_10051618.html */
 :root{
+  --mana:#2F55B5;
   --bg:#D8D4CB; --panel:#E6E2DA; --line:#9C9384; --ink:#211C17; --soft:#645A4E;
   --btn:#CFC9BE; --btnInk:#211C17; --gold:#8C6A12; --goldBg:#C9A548;
   --life:#A8352C; --exp:#8C6A12;
@@ -110,3 +111,6 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .acts{display:flex;gap:8px;margin-top:12px}
 .autoRow{display:flex;align-items:center;gap:6px;font-size:16px}
 .autoRow input{width:56px;font:inherit;font-size:16px;text-align:center;padding:6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.hpb.mpb i{background:var(--mana)} /* 魔力條（藍） */
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--mana:#3A64D8}}
+:root[data-theme="dark"]{--mana:#3A64D8}
