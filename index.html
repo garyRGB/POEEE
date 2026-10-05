@@ -4,14 +4,61 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>POEEE</title>
-<!-- 首頁：目前先轉到已認可的介面樣板。第 1 階段開始後，這裡換成真正的遊戲。 -->
-<meta http-equiv="refresh" content="0; url=ui_10051618.html">
-<style>
-body{margin:0;padding:24px 16px;background:#D8D4CB;color:#211C17;font-family:system-ui,sans-serif}
-a{color:#8C6A12}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<p>正在開啟遊戲畫面… 沒有自動跳轉的話，請點 <a href="ui_10051618.html">這裡</a>。</p>
+<div class="app">
+  <div class="top">
+    <span class="name" id="heroName"></span>
+    <span class="res num"><span>經驗:<b id="exp">0</b></span><span>金幣:<b id="gold">0</b></span><span>重擲石:<b id="orb">0</b></span></span>
+    <button class="rect" disabled>設置</button>
+  </div>
+
+  <div class="panel" id="battle">
+    <div class="field">
+      <div class="unit hero">
+        <div class="nm m" id="heroTitle"></div>
+        <div class="hpb"><i id="heroHp"></i><span id="heroHpText" class="num"></span></div>
+        <small>Lv <span id="lv"></span></small>
+      </div>
+      <div class="monsters" id="monsters"></div>
+    </div>
+    <div class="feed" id="feed"></div>
+    <div class="stagec num"><span id="kills">0</span>/<span id="killsNeed"></span><br>第 <span id="stage">1</span> 關</div>
+    <div class="ctrl">
+      <div class="items num"><span>藥水 <b id="potions"></b></span><span>復活 <b id="revives"></b></span></div>
+      <label class="check"><input type="checkbox" disabled> 自動挑戰</label>
+      <button class="btn gold" disabled>挑戰首領</button>
+    </div>
+  </div>
+
+  <div class="rounds">
+    <button class="round" disabled>背包</button>
+    <button class="round" disabled>天賦</button>
+    <button class="round" disabled>自動</button>
+    <button class="round" disabled>商店</button>
+  </div>
+  <p class="hint">背包、天賦、自動、商店之後的階段才開放。</p>
+
+  <div class="title"><span>角色屬性</span></div>
+  <div class="panel"><div class="stats num" id="stats"></div></div>
+
+  <div class="title"><span>裝備配置</span></div>
+  <div class="panel"><div class="doll" id="doll"></div></div>
+
+  <div class="bottom">
+    <button class="btn line" disabled>戰鬥紀錄</button>
+    <button class="btn line" disabled>任務</button>
+  </div>
+</div>
+
+<!-- 資料先載入，程式再載入：調數值只改 data/ -->
+<script src="data/hero.js"></script>
+<script src="data/monsters.js"></script>
+<script src="data/rules.js"></script>
+<script src="game.js"></script>
 </body>
 </html>

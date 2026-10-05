@@ -1,0 +1,88 @@
+/* 顏色與排版沿用介面樣板 ui_10051618.html */
+:root{
+  --bg:#D8D4CB; --panel:#E6E2DA; --line:#9C9384; --ink:#211C17; --soft:#645A4E;
+  --btn:#CFC9BE; --btnInk:#211C17; --gold:#8C6A12; --goldBg:#C9A548;
+  --life:#A8352C; --exp:#8C6A12;
+  --n:#4F483F; --m:#2F55B5; --r:#8C6A00; --u:#A0501C; --ok:#2E7D32;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181B; --panel:#1F2226; --line:#55575B; --ink:#E7E3DA; --soft:#9A968D;
+    --btn:#DCDAD5; --btnInk:#1A1A1A; --gold:#E2C26A; --goldBg:#B8963E;
+    --life:#C23A30; --exp:#C9A04A;
+    --n:#D9D5CC; --m:#8FA8F2; --r:#EBCB5C; --u:#E0925A; --ok:#5BD15F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16181B; --panel:#1F2226; --line:#55575B; --ink:#E7E3DA; --soft:#9A968D;
+  --btn:#DCDAD5; --btnInk:#1A1A1A; --gold:#E2C26A; --goldBg:#B8963E;
+  --life:#C23A30; --exp:#C9A04A;
+  --n:#D9D5CC; --m:#8FA8F2; --r:#EBCB5C; --u:#E0925A; --ok:#5BD15F;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Songti TC","PMingLiU",serif;font-size:15px;line-height:1.45}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.app{max-width:460px;margin:0 auto;padding:0 8px 16px}
+.m{color:var(--m)} .r{color:var(--r)} .u{color:var(--u)}
+.num{font-variant-numeric:tabular-nums}
+
+/* 頂部資源列 */
+.top{display:grid;grid-template-columns:auto 1fr auto;align-items:center;border-bottom:1px solid var(--line);padding:8px 2px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5;gap:8px}
+.top .name{padding-right:10px;border-right:1px solid var(--line);font-weight:700}
+.top .res{display:flex;justify-content:space-around;font-size:14px}
+.rect{border:1px solid var(--line);border-radius:4px;padding:3px 10px;font-size:14px}
+
+/* 面板 */
+.panel{border:1px solid var(--line);border-radius:3px;margin-top:8px;padding:10px;position:relative;background:var(--panel)}
+.panel::before,.panel::after{content:"";position:absolute;width:10px;height:10px;border:1px solid var(--line)}
+.panel::before{top:3px;left:3px;border-right:0;border-bottom:0}
+.panel::after{bottom:3px;right:3px;border-left:0;border-top:0}
+.title{display:flex;align-items:center;gap:8px;justify-content:center;margin:14px 0 2px;font-size:15px;letter-spacing:.15em}
+.title::before,.title::after{content:"";flex:0 1 90px;height:1px;background:linear-gradient(90deg,transparent,var(--line))}
+.title::after{background:linear-gradient(270deg,transparent,var(--line))}
+.title span::before,.title span::after{content:"◇";color:var(--soft);font-size:11px;margin:0 6px}
+
+/* 戰鬥區：左邊角色 1 格，右邊怪物 6 格 */
+.field{display:grid;grid-template-columns:38% 1fr;gap:8px;align-items:start}
+.unit{border:1px solid var(--line);border-radius:3px;padding:3px;text-align:center;font-size:13px;background:var(--bg)}
+.unit .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unit small{display:block;font-size:11px;color:var(--soft)}
+.unit.empty{border-style:dashed;background:transparent;color:var(--soft);display:grid;place-items:center;min-height:52px;font-size:12px}
+.hero{padding:6px 4px}
+.monsters{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.monsters .unit{min-height:52px;font-size:12px}
+.hpb{position:relative;height:16px;background:var(--panel);border:1px solid var(--line);margin-top:2px}
+.hpb i{position:absolute;inset:0 auto 0 0;background:var(--life);transition:width .2s}
+.hpb span{position:relative;font-size:12px;line-height:14px;color:#fff;text-shadow:0 0 2px #000}
+.feed{height:62px;overflow:hidden;text-align:center;font-size:13px;margin:6px 0;color:var(--soft)}
+.stagec{text-align:center;font-size:15px;line-height:1.3}
+.ctrl{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:8px}
+.btn{background:var(--btn);color:var(--btnInk);border-radius:3px;padding:7px 10px;font-weight:700;text-align:center}
+.btn.gold{background:var(--goldBg);color:#2a1e05;border:1px solid var(--gold)}
+.btn.line{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:default}
+.check{display:flex;align-items:center;gap:6px;color:var(--gold);font-weight:700;white-space:nowrap}
+.check input{width:20px;height:20px;accent-color:var(--gold)}
+.items{display:flex;flex-direction:column;font-size:13px;line-height:1.5}
+
+/* 圓形選單 */
+.rounds{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.round{width:64px;height:64px;border-radius:50%;border:2px solid var(--line);box-shadow:inset 0 0 0 3px var(--bg),inset 0 0 0 4px var(--line);font-size:17px;font-weight:700;background:var(--panel)}
+.round:disabled{opacity:.45;cursor:default}
+
+/* 屬性 */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;font-size:15px}
+.stats div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:2px 0}
+.stats span:first-child{color:var(--soft)}
+
+/* 裝備紙娃娃 */
+.doll{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 6px;padding:10px 0}
+.slot{display:grid;place-items:center;height:78px;position:relative}
+.slot::before{content:"";position:absolute;width:56px;height:56px;border:1px solid var(--line);transform:rotate(45deg);background:var(--bg)}
+.slot b{position:relative;font-size:13px;line-height:1.2;text-align:center;color:var(--soft);font-weight:500}
+
+.bottom{display:flex;gap:8px;margin-top:12px}
+.bottom .btn{flex:1}
+.hint{font-size:12px;color:var(--soft);margin-top:8px}
