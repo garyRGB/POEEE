@@ -1,5 +1,5 @@
 // 職業資料。加職業 = 在 list 多加一筆；調數值只改這裡。
-// 生命、攻擊、魔力、回魔是 Lv 1 的數字；升級後 = 這裡的數字 × 等級（跟怪物一樣成正比）。
+// 生命、魔力照 POE2 算（data/character.js、src/stats.js）；攻擊來自武器（startWeapon 指到 data/items.js 的底材）。
 window.DATA = window.DATA || {};
 DATA.classes = {
   // 所有職業共用的開局數值
@@ -14,24 +14,16 @@ DATA.classes = {
     {
       id: "witch",
       name: "女巫",
-      desc: "施法者。每下打得重，但生命低、出手慢。",
-      maxLife: 80,
-      attack: 12,
-      attacksPerSec: 0.8,
-      attackRangeM: 4,    // 普通攻擊打多遠（公尺）：施法者遠距離
-      maxMana: 60,        // 最大魔力（放技能時消耗，技能是 #9）
-      manaRegen: 2        // 每秒回魔
+      desc: "施法者。靠法術打遠方的怪，生命低、魔力高。",
+      startWeapon: { itemClass: "Wands", id: "Withered_Wand" },     // 凋零法杖（POE2 法杖不能普通攻擊）
+      attackRangeM: 4     // 鎖定目標的距離（公尺）：施法者遠距離
     },
     {
       id: "duelist",
       name: "決鬥者",
-      desc: "近戰劍客。生命高、出手快，每下比較輕。",
-      maxLife: 120,
-      attack: 7,
-      attacksPerSec: 1.3,
-      attackRangeM: 1.6,  // 近戰
-      maxMana: 40,
-      manaRegen: 3
+      desc: "近戰鬥士。拿錘子打一群，生命高、魔力低。",
+      startWeapon: { itemClass: "One_Hand_Maces", id: "Wooden_Club" }, // 木製棍棒（Gary 2026-10-06：給錘類；poe2db 原本寫劍）
+      attackRangeM: 1.6   // 近戰
     }
   ]
 };

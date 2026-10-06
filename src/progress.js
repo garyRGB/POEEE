@@ -5,13 +5,7 @@ window.G = window.G || {};
 
   G.expToNext = (level, rules) => rules.levelExpBase * level * level; // 50 × 等級²
 
-  // 角色的生命、攻擊、魔力、回魔 = 職業 Lv1 數值 × 等級
-  G.applyLevel = function (hero) {
-    hero.maxLife = hero.cls.maxLife * hero.level;
-    hero.attack = hero.cls.attack * hero.level;
-    hero.maxMana = hero.cls.maxMana * hero.level;
-    hero.manaRegen = hero.cls.manaRegen * hero.level;
-  };
+  // 角色數值（生命、魔力、武器）怎麼隨等級變：見 src/stats.js 的 G.applyLevel
 
   // 同一步打死好幾隻（範圍技能）：合成一行「擊倒 N 隻」，升級訊息另外列
   G.onKills = function (S, hero, list, rules) {
