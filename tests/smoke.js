@@ -21,7 +21,7 @@ function serve(port) {
 }
 
 async function open(browser, url, opts = {}) {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const page = await browser.newPage({ viewport: opts.viewport || { width: 390, height: 844 } });
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort()); // 字型連不到不算錯
@@ -487,6 +487,47 @@ const MANA_CHECKS = [
   }],
 ];
 
+// #9 改版面：一頁不捲動
+const LAYOUT_CHECKS = [
+  ["#9 一頁不捲動：整個主畫面剛好一個手機畫面，不用往下捲", async ({ page }) => {
+    const r = await page.evaluate(() => ({ sh: document.documentElement.scrollHeight, vh: innerHeight, navBottom: document.getElementById("nav").getBoundingClientRect().bottom }));
+    return (r.sh <= r.vh && r.navBottom <= r.vh) || JSON.stringify(r);
+  }],
+  ["#9 由上到下：資源列 → 戰場 → 按鈕列（在戰場下緣）→ 8 顆按鈕", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const y = sel => document.querySelector(sel).getBoundingClientRect();
+      const top = y(".game .top"), arena = y("#battle"), ctrl = y("#battle .ctrl"), nav = y("#nav");
+      return { ok: top.bottom <= arena.top && Math.abs(ctrl.bottom - arena.bottom) <= 2 && arena.bottom <= nav.top, arenaH: arena.height };
+    });
+    return (r.ok && r.arenaH > 300) || JSON.stringify(r);
+  }],
+  ["#9 資源列：經驗、金幣、鑽石（沒有重擲石）", async ({ page }) => {
+    const t = await page.locator(".game .top").innerText();
+    return (["經驗", "金幣", "鑽石"].every(w => t.includes(w)) && !t.includes("重擲石")) || t;
+  }],
+  ["#9 一排 8 顆按鈕，順序：背包、天賦、自動、商店、角色、裝備、戰鬥、任務", async ({ page }) => {
+    const names = await page.locator("#nav .round").allInnerTexts();
+    const tops = await page.locator("#nav .round").evaluateAll(els => new Set(els.map(e => Math.round(e.getBoundingClientRect().top))).size);
+    return (names.join("") === "背包天賦自動商店角色裝備戰鬥任務" && tops === 1) || `${names.join("、")}，排成 ${tops} 行`;
+  }],
+  ["#9 按「角色」跳出角色屬性，按關閉收起來", async ({ page }) => {
+    await page.locator("#charBtn").click();
+    const shown = await page.locator("#charSheet").isVisible();
+    const t = await page.locator("#stats").innerText();
+    await page.locator("#charSheet [data-close]").click();
+    const hidden = !(await page.locator("#charSheet").isVisible());
+    return (shown && t.includes("攻擊") && t.includes("魔力") && hidden) || `${shown} ${hidden} ${t}`;
+  }],
+  ["#9 按「裝備」跳出 10 格裝備，點旁邊收起來", async ({ page }) => {
+    await page.locator("#equipBtn").click();
+    const shown = await page.locator("#equipSheet").isVisible();
+    const n = await page.locator("#equipSheet .slot").count();
+    await page.mouse.click(195, 30);
+    const hidden = !(await page.locator("#equipSheet").isVisible());
+    return (shown && n === 10 && hidden) || `${shown} ${n} ${hidden}`;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -550,6 +591,13 @@ const MANA_CHECKS = [
   for (const [name, fn] of MANA_CHECKS) for (const cls of ["witch", "duelist"]) {
     const c = await open(browser, url, { start: cls });
     report(`${name}（${CLASS_NAME[cls]}）`, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of LAYOUT_CHECKS) for (const vp of [{ width: 390, height: 844 }, { width: 375, height: 667 }]) {
+    const c = await open(browser, url, { start: "witch", viewport: vp });
+    report(`${name}（${vp.width}×${vp.height}）`, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
   }

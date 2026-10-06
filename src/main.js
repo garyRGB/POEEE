@@ -19,6 +19,7 @@
 
     // 遊戲迴圈：每 0.1 秒走一步。G.step 也給自動檢查用來快轉時間。
     G.setupAutoPanel(S);
+    G.setupSheets();
 
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）

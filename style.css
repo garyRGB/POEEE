@@ -1,4 +1,4 @@
-/* 顏色與排版沿用介面樣板 ui_10051618.html */
+/* 顏色沿用介面樣板 ui_10051618.html；主畫面版面照 ui_battle_layout.html（一頁不捲動） */
 :root{
   --mana:#2F55B5;
   --bg:#D8D4CB; --panel:#E6E2DA; --line:#9C9384; --ink:#211C17; --soft:#645A4E;
@@ -114,3 +114,15 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .hpb.mpb i{background:var(--mana)} /* 魔力條（藍） */
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--mana:#3A64D8}}
 :root[data-theme="dark"]{--mana:#3A64D8}
+
+/* ── 一頁不捲動的主畫面（#9） ── */
+html,body{height:100%}
+.game{height:100%;display:flex;flex-direction:column;padding-bottom:0}
+.game .top{position:static}
+.arena{position:relative;flex:1;min-height:0;margin-top:8px;border:1px solid var(--line);border-radius:3px;background:var(--panel);padding:10px 10px 60px;overflow:hidden}
+.arena .feed{height:auto;max-height:62px}
+.arena .ctrl{position:absolute;left:0;right:0;bottom:0;margin:0;padding:8px 10px;border-top:1px solid var(--line);background:var(--bg)}
+.arena .items{flex-direction:row;gap:12px;font-size:14px}
+.nav{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px 0}
+.nav .round{width:100%;height:auto;aspect-ratio:1;max-width:52px;justify-self:center;font-size:13px;border-width:1.5px;box-shadow:none}
+.box .doll{padding:4px 0}

@@ -17,14 +17,15 @@
   <button class="btn gold startBtn" id="startBtn" disabled>開始</button>
 </div>
 
-<div class="app" id="game" hidden>
+<div class="app game" id="game" hidden>
   <div class="top">
     <span class="name" id="heroName"></span>
-    <span class="res num"><span>經驗:<b id="exp">0</b></span><span>金幣:<b id="gold">0</b></span><span>重擲石:<b id="orb">0</b></span></span>
+    <span class="res num"><span>經驗:<b id="exp">0</b></span><span>金幣:<b id="gold">0</b></span><span>鑽石:<b id="diamond">0</b></span></span>
     <button class="rect" disabled>設置</button>
   </div>
 
-  <div class="panel" id="battle">
+  <!-- 戰場：佔掉剩下的高度（#9 先放格子，#10、#11 換成 2D） -->
+  <div class="arena" id="battle">
     <div class="field">
       <div class="unit hero">
         <div class="nm m"><span id="heroTitle"></span> <small class="lvTag">Lv<span id="lv"></span></small></div>
@@ -40,23 +41,35 @@
     </div>
   </div>
 
-  <div class="rounds">
-    <button class="round" disabled>背包</button>
-    <button class="round" disabled>天賦</button>
+  <!-- 一排 8 顆按鈕 -->
+  <nav class="nav" id="nav">
+    <button class="round" id="bagBtn" disabled>背包</button>
+    <button class="round" id="treeBtn" disabled>天賦</button>
     <button class="round" id="autoBtn" disabled>自動</button>
-    <button class="round" disabled>商店</button>
+    <button class="round" id="shopBtn" disabled>商店</button>
+    <button class="round" id="charBtn">角色</button>
+    <button class="round" id="equipBtn">裝備</button>
+    <button class="round" id="logBtn" disabled>戰鬥</button>
+    <button class="round" id="questBtn" disabled>任務</button>
+  </nav>
+</div>
+
+<!-- 「角色」頁 -->
+<div class="sheet" id="charSheet" hidden>
+  <div class="box">
+    <h3>角色屬性</h3>
+    <div class="stats num" id="stats"></div>
+    <div class="acts"><button class="btn line" data-close>關閉</button></div>
   </div>
-  <p class="hint">背包、天賦、商店之後的階段才開放。</p>
+</div>
 
-  <div class="title"><span>角色屬性</span></div>
-  <div class="panel"><div class="stats num" id="stats"></div></div>
-
-  <div class="title"><span>裝備配置</span></div>
-  <div class="panel"><div class="doll" id="doll"></div></div>
-
-  <div class="bottom">
-    <button class="btn line" disabled>戰鬥紀錄</button>
-    <button class="btn line" disabled>任務</button>
+<!-- 「裝備」頁 -->
+<div class="sheet" id="equipSheet" hidden>
+  <div class="box">
+    <h3>裝備配置</h3>
+    <div class="doll" id="doll"></div>
+    <p class="hint">裝備是第 2 階段的事，現在 10 格都是空的。</p>
+    <div class="acts"><button class="btn line" data-close>關閉</button></div>
   </div>
 </div>
 
@@ -85,6 +98,7 @@
 <script src="src/mana.js"></script>
 <script src="src/autoRules.js"></script>
 <script src="src/autoPanel.js"></script>
+<script src="src/sheets.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>
