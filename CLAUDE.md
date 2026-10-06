@@ -12,6 +12,7 @@
 | 介面樣板（戰場版面） | repo 根目錄 `ui_battle_layout.html`（2026-10-06 認可） | 主畫面照這個做；Artifact 版：https://claude.ai/artifact/RTmgZHHaNkzr7pFyqueetF |
 | 介面樣板（舊） | repo 根目錄 `ui_10051618.html` | 天賦樹、裝備格、彈出頁的樣子還是參考這個 |
 | poe2db 爬蟲 | repo 的 `tools/crawl_poe2db.py` | 產生 `data/skills.js`、`data/supports.js`；換技能就改清單重跑 `python3 tools/crawl_poe2db.py` |
+| poe2db 裝備爬蟲 | repo 的 `tools/crawl_items.py` | 產生 `data/items.js`（底材）、`data/affixes.js`（詞綴）、`data/character.js`（角色基礎數值）；加部位就改清單重跑 `python3 tools/crawl_items.py` |
 | 遊戲網址 | https://garyrgb.github.io/POEEE/ | GitHub Pages，推上 `main` 約 1～2 分鐘後更新 |
 | GitHub repo | https://github.com/garyRGB/POEEE （公開） | 手機 Claude App 的 Code 分頁選這個 repo、分支 `main` |
 | Code 分頁入口 | https://claude.ai/code | 手機上是 Claude App 的「Code」分頁 |

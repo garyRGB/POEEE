@@ -49,6 +49,53 @@ async function startAs(page, classId) {
 }
 
 // ───── 檢查清單（照小任務順序累加）─────
+// 第 2 階段 #1：裝備資料（data/items.js、data/affixes.js、data/character.js）直接在 Node 裡讀，不用開瀏覽器
+function loadData(files) {
+  const vm = require("vm"), ctx = { window: {} }; ctx.window = ctx; vm.createContext(ctx);
+  for (const f of files) vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
+  return ctx.DATA;
+}
+const ITEMDATA_CHECKS = [
+  ["第 2 階段 #1 裝備資料：12 個類別（錘×2、法杖、長杖、戒指、胸甲×7）都有底材，每件有名字和需求等級", D => {
+    const keys = Object.keys(D.items), bad = [];
+    for (const k of keys) for (const b of D.items[k].bases) if (!b.name || !(b.reqLevel >= 1)) bad.push(k + ":" + b.id);
+    const empty = keys.filter(k => !D.items[k].bases.length);
+    return (keys.length === 12 && !empty.length && !bad.length) || JSON.stringify({ n: keys.length, empty, bad: bad.slice(0, 5) });
+  }],
+  ["第 2 階段 #1 武器：錘有物理傷害、攻速、暴擊；每把武器記武器類型；法杖記賦予的技能（凋零法杖→混沌弩箭）", D => {
+    const maces = [...D.items.One_Hand_Maces.bases, ...D.items.Two_Hand_Maces.bases];
+    const noDmg = maces.filter(b => !(b.aps > 0 && b.crit > 0 && (b.phys || b.fire || b.cold || b.lightning || b.chaos))).map(b => b.name);
+    const types = ["One_Hand_Maces", "Two_Hand_Maces", "Wands", "Staves"].map(k => D.items[k].weaponType);
+    const wand = D.items.Wands.bases.find(b => b.id === "Withered_Wand");
+    const club = D.items.One_Hand_Maces.bases.find(b => b.id === "Wooden_Club");
+    return (!noDmg.length && types.join() === "mace,mace,wand,staff" && wand && wand.grantsSkill.id === "Chaos_Bolt" && club && club.phys.join("-") === "6-10" && club.aps === 1.45)
+      || JSON.stringify({ noDmg: noDmg.slice(0, 5), types, wand, club });
+  }],
+  ["第 2 階段 #1 胸甲：照能力值分 7 種，力量型有護甲值、智慧型有能量護盾", D => {
+    const t = D.items.Body_Armours_str.bases.every(b => b.armour > 0 && !b.energyShield), i = D.items.Body_Armours_int.bases.every(b => b.energyShield > 0 && !b.armour);
+    return (t && i) || JSON.stringify({ str: t, int: i });
+  }],
+  ["第 2 階段 #1 詞綴：每個類別都有前綴、後綴；每階的數值個數跟文字裡的 # 一樣多；T1 是物品等級最高的那階", D => {
+    const bad = [];
+    for (const [k, a] of Object.entries(D.affixes)) {
+      if (!a.prefix.length || !a.suffix.length) bad.push(k + " 沒有前綴或後綴");
+      for (const fam of [...a.prefix, ...a.suffix]) {
+        for (const t of fam.tiers) if ((t.template.match(/#/g) || []).length !== t.ranges.length || !(t.ilvl >= 1)) bad.push(k + ":" + t.text);
+        const t1 = fam.tiers.find(t => t.tier === 1);
+        if (!t1 || t1.ilvl !== Math.max(...fam.tiers.map(t => t.ilvl))) bad.push(k + ":" + fam.family + " T1 不對");
+      }
+    }
+    const phys = D.affixes.One_Hand_Maces.prefix.find(f => f.family === "LocalPhysicalDamagePercent");
+    const low = phys && phys.tiers.find(t => t.ilvl === 1);
+    return (!bad.length && Object.keys(D.affixes).length === 12 && low && low.ranges[0].join("-") === "40-49") || JSON.stringify({ bad: bad.slice(0, 5), low });
+  }],
+  ["第 2 階段 #1 角色數值：每級 +12 生命、+4 魔力；女巫智慧 15、決鬥者力量 11；基礎生命 28、魔力 34（poe2wiki）", D => {
+    const c = D.character;
+    return (c.lifePerLevel === 12 && c.manaPerLevel === 4 && c.lifePerStr === 2 && c.manaPerInt === 2 && c.classes.witch.int === 15 && c.classes.duelist.str === 11 && c.lifeBase === 28 && c.manaBase === 34)
+      || JSON.stringify(c);
+  }],
+];
+
 const CHECKS = [
   // #1 骨架調整
   ["#1 打開沒有錯誤", async ({ errors }) => errors.length === 0 || errors.join(" / ")],
@@ -1048,6 +1095,12 @@ const SKILLRULE_CHECKS = [
     report(`${name}（${vp.width}×${vp.height}）`, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
+  }
+
+  {
+    let D = null, err = "";
+    try { D = loadData(["data/items.js", "data/affixes.js", "data/character.js"]); } catch (e) { err = e.message; }
+    for (const [name, fn] of ITEMDATA_CHECKS) { let r; try { r = D ? fn(D) : "資料檔讀不到：" + err; } catch (e) { r = "出錯：" + e.message; } report(name, r); }
   }
 
   for (const [name, fn] of SKILLDATA_CHECKS) {
