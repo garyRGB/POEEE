@@ -764,6 +764,99 @@ const EFFECT_CHECKS = [
   }],
 ];
 
+// #16 輔助寶石插槽
+const SOCKET_CHECKS = [
+  ["#16 每招 2 個插槽，開局都是空的；「角色」頁列出 3 招、6 個插槽", async ({ page }) => {
+    const r = await page.evaluate(() => Object.values(G.S.sockets).map(x => x.length + ":" + x.filter(Boolean).length));
+    await page.locator("#charBtn").click();
+    const n = await page.locator("#skillPanel .sock").count();
+    return (r.length === 3 && r.every(x => x === "2:0") && n === 6) || `${r.join(",")} 插槽按鈕 ${n}`;
+  }],
+  ["#16 標籤不合插不上：連鎖、多重射擊只能插投射物技能；集中範圍只能插範圍技能", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const fits = (sk, sp) => G.supportFits(sk, sp);
+      return [fits("Chaos_Bolt", "Chain_I"), fits("Chaos_Bolt", "Multishot_I"), fits("Bone_Blast", "Chain_I"), fits("Bone_Blast", "Concentrated_Area"),
+              fits("Earthquake", "Prolonged_Duration_I"), fits("Boneshatter", "Prolonged_Duration_I"), fits("Rolling_Slam", "Concentrated_Area")];
+    });
+    return r.join(",") === "true,true,false,true,true,false,true" || r.join(",");
+  }],
+  ["#16 每顆只有 1 個：插在 A 招之後，B 招插不上；拔掉就能換插", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, [a, b] = G.heroSkills(G.hero).filter(id => G.supportFits(id, "Concentrated_Area"));
+      const e1 = G.setSocket(S, a, 0, "Concentrated_Area"), e2 = G.setSocket(S, b, 0, "Concentrated_Area");
+      G.setSocket(S, a, 0, null); const e3 = G.setSocket(S, b, 0, "Concentrated_Area");
+      return { e1, e2: !!e2, e3, at: S.sockets[b][0] };
+    });
+    return (r.e1 === null && r.e2 && r.e3 === null && r.at === "Concentrated_Area") || JSON.stringify(r);
+  }],
+  ["#16 連鎖 I（女巫混沌弩箭）：打完目標再跳 1 隻，每下 30% 更少", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "witch") return "skip";
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Chaos_Bolt"]);
+      G.setSocket(S, "Chaos_Bolt", 0, "Chain_I");
+      const a = place(2, 0, { baseLife: 1000, moveSpeed: 0, baseAttack: 0 }), b = place(3.5, 0, { baseLife: 1000, moveSpeed: 0, baseAttack: 0 }), c = place(-3, 3, { baseLife: 1000, moveSpeed: 0, baseAttack: 0 });
+      G.step(0.751);
+      return { a: 1000 - a.hp, b: 1000 - b.hp, c: 1000 - c.hp };
+    });
+    if (r === "skip") return true;
+    // 5～9 × 0.7 → 3.5～6.3，四捨五入 3～6
+    return (r.a >= 3 && r.a <= 6 && r.b >= 3 && r.b <= 6 && r.c === 0) || JSON.stringify(r);
+  }],
+  ["#16 多重射擊 I（女巫混沌弩箭）：一次打 3 隻，傷害 35% 更少，施放變慢 20%", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "witch") return "skip";
+      const S = G.S; clearField(); skillsOnly(["Chaos_Bolt"]);
+      G.setSocket(S, "Chaos_Bolt", 0, "Multishot_I");
+      const ms = [[2, 0], [0, 2], [-2, 0], [0, -3.5]].map(([x, y]) => place(x, y, { baseLife: 1000, moveSpeed: 0, baseAttack: 0 }));
+      G.step(0.76);                       // 0.75 秒還不夠（要 0.75 ÷ 0.8 ≈ 0.94 秒）
+      const early = ms.filter(m => m.hp < 1000).length;
+      G.step(0.2);
+      return { early, hit: ms.filter(m => m.hp < 1000).length, dmg: ms.map(m => 1000 - m.hp) };
+    });
+    if (r === "skip") return true;
+    return (r.early === 0 && r.hit === 3 && r.dmg.every(d => d === 0 || (d >= 3 && d <= 6))) || JSON.stringify(r);
+  }],
+  ["#16 集中範圍：範圍變小（半徑 × 0.71）、範圍傷害 30% 更多", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, id = h.id === "witch" ? "Bone_Blast" : "Earthquake";
+      const before = G.skillEffective(S, id).radiusM;
+      G.setSocket(S, id, 0, "Concentrated_Area");
+      const m = G.skillMods(S, id), after = G.skillEffective(S, id).radiusM;
+      return { ratio: +(after / before).toFixed(3), area: m.areaMult };
+    });
+    return (r.ratio === 0.707 && r.area === 1.3) || JSON.stringify(r);
+  }],
+  ["#16 延長持續時間 I：持續時間 30% 更長（瘟疫 5→6.5 秒、震地 4→5.2 秒），耗魔 × 1.2", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero, id = h.id === "witch" ? "Contagion" : "Earthquake";
+      const c0 = G.skillCost(S, h, id);
+      G.setSocket(S, id, 0, "Prolonged_Duration_I");
+      const e = G.skillEffective(S, id);
+      return { dur: +(e.durationSec || e.delaySec).toFixed(2), c0, c1: G.skillCost(S, h, id) };
+    });
+    return ((r.dur === 6.5 || r.dur === 5.2) && r.c1 === Math.round(r.c0 * 1.2)) || JSON.stringify(r);
+  }],
+  ["#16 畫面：在「角色」頁點插槽→選輔助寶石→插上；技能列出現 ◆", async ({ page }) => {
+    await page.locator("#charBtn").click();
+    await page.locator("#skillPanel .sock").first().click();
+    const first = await page.evaluate(() => G.heroSkills(G.hero)[0]);
+    const ok = await page.evaluate(id => G.supportIds().find(s => !G.socketProblem(G.S, id, 0, s)), first);
+    await page.locator(`#skillPanel [data-pick="${ok}"]`).click();
+    const at = await page.evaluate(id => G.S.sockets[id][0], first);
+    const hint = await page.locator("#socketHint").innerText();
+    await page.locator("#charSheet [data-close]").click();
+    await page.evaluate(() => G.render(G.S, G.hero));
+    const bar = await page.locator("#skillbar").innerText();
+    return (at === ok && hint.includes("已插上") && bar.includes("◆")) || `${at} ${hint} ${bar}`;
+  }],
+  ["#16 畫面：插不上的輔助寶石是灰的，寫出原因", async ({ page }) => {
+    await page.locator("#charBtn").click();
+    await page.locator("#skillPanel .sock").first().click();
+    const n = await page.locator("#skillPanel .pick:disabled em").count();
+    return n >= 1 || "沒有灰掉的選項";
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -856,6 +949,14 @@ const EFFECT_CHECKS = [
   for (const [name, fn] of EFFECT_CHECKS) {
     const cls = name.includes("決鬥者") ? "duelist" : "witch";
     const c = await open(browser, url, { start: cls });
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of SOCKET_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = `${title}（${CLASS_NAME[cls]}）`;
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();

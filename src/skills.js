@@ -36,6 +36,17 @@ window.G = window.G || {};
   };
   G.spellMult = spellMult;
 
+  // 這招現在的參數：data/skillPlay.js 的設定，再套上插槽裡的輔助寶石（src/sockets.js）
+  const eff = (S, id) => {
+    const p = play(id), m = G.skillMods(S, id), r = m.radiusMult, scale = v => v && v * r;
+    return { ...p, mods: m, radiusM: scale(p.radiusM), shockRadiusM: scale(p.shockRadiusM), spreadRadiusM: scale(p.spreadRadiusM),
+      stages: p.stages && p.stages.map(s => ({ ...s, radiusM: s.radiusM * r })),
+      durationSec: p.durationSec && p.durationSec * m.durMult, delaySec: p.delaySec && p.delaySec * m.durMult };
+  };
+  G.skillEffective = eff;
+  // 耗魔要算輔助寶石的消耗加成
+  G.skillCost = (S, hero, id) => Math.round(G.skillManaCost(id, hero.level) * G.skillMods(S, id).costMult);
+
   const hitAll = (S, list, dmg, killed) => { for (const m of list) G.hitMonster(S, m, dmg, killed); };
   const within = (S, c, r) => S.monsters.filter(m => m.hp > 0 && G.dist(m, c) <= r);
   const nearest = (S, rangeM) => {
@@ -47,11 +58,27 @@ window.G = window.G || {};
   // 每招的「計畫」：現在放得出去嗎？放了打誰？放不出去就回傳 null
   const PLAN = {
     projectile(S, hero, id, p) {
-      const t = nearest(S, p.rangeM);
-      return t && { dur: gem(id).castTimeSec, fire(killed) {
-        const [lo, hi] = spellMult(id, hero);
-        G.hitMonster(S, t, Math.round(rand(lo, hi) * hero.attack), killed);
-        S.fx.push({ type: "bolt", x: t.x, y: t.y, age: 0, life: 0.25 });
+      const t = nearest(S, p.rangeM), mo = p.mods;
+      return t && { dur: gem(id).castTimeSec / mo.speedMult, fire(killed) {
+        const [lo, hi] = spellMult(id, hero), mult = mo.hitMult * mo.dmgMult;
+        // 主目標＋額外投射物打最近的其他怪；每一發可以再連鎖
+        const firsts = S.monsters.filter(m => m.hp > 0 && G.dist(m, HERO) <= p.rangeM)
+          .sort((a, b) => G.dist(a, HERO) - G.dist(b, HERO)).slice(0, 1 + mo.extraProj);
+        let hits = 0;
+        for (const first of firsts) {
+          let cur = first, from = HERO; const seen = new Set();
+          for (let j = 0; cur && j <= mo.chain; j++) {
+            seen.add(cur);
+            S.fx.push({ type: "bolt", x: cur.x, y: cur.y, fx: from.x, fy: from.y, age: 0, life: 0.25 });
+            const at = { x: cur.x, y: cur.y };
+            G.hitMonster(S, cur, Math.round(rand(lo, hi) * hero.attack * mult), killed); hits++;
+            from = at;
+            let next = null, nd = Infinity;
+            for (const m of S.monsters) { const d = G.dist(m, at); if (m.hp > 0 && !seen.has(m) && d <= mo.chainRangeM && d < nd) { next = m; nd = d; } }
+            cur = next;
+          }
+        }
+        if (hits > 1) return `${gem(id).name} 擊中 ${hits} 次`;
       } };
     },
     area(S, hero, id, p) {
@@ -63,22 +90,24 @@ window.G = window.G || {};
       }
       if (!best || bn < (p.minTargets || 1)) return null;
       const c = { x: best.x, y: best.y };
-      return { dur: gem(id).castTimeSec, fire(killed) {
+      const mo = p.mods;
+      return { dur: gem(id).castTimeSec / mo.speedMult, fire(killed) {
         const hit = within(S, c, p.radiusM), [lo, hi] = spellMult(id, hero);
-        hitAll(S, hit, Math.round(rand(lo, hi) * hero.attack), killed);
+        hitAll(S, hit, Math.round(rand(lo, hi) * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
         S.fx.push({ type: "circle", x: c.x, y: c.y, r: p.radiusM, age: 0, life: 0.35 });
         return `${gem(id).name} 擊中 ${hit.length} 隻`;
       } };
     },
     melee(S, hero, id, p) {
       const t = G.pickTarget(S, hero);
-      return t && { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100), fire(killed) {
-        G.hitMonster(S, t, Math.round(basePct(id, p.hitPctColumn) * hero.attack), killed);
+      const mo = p.mods;
+      return t && { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100) / mo.speedMult, fire(killed) {
+        G.hitMonster(S, t, Math.round(basePct(id, p.hitPctColumn) * hero.attack * mo.hitMult * mo.dmgMult), killed);
         S.fx.push({ type: "bolt", x: t.x, y: t.y, age: 0, life: 0.2 });
         S.shockCount = (S.shockCount || 0) + 1;
         if (S.shockCount % p.shockEvery) return;
         const hit = within(S, t, p.shockRadiusM);
-        hitAll(S, hit, Math.round(basePct(id, p.shockPctColumn) * hero.attack), killed);
+        hitAll(S, hit, Math.round(basePct(id, p.shockPctColumn) * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
         S.fx.push({ type: "circle", x: t.x, y: t.y, r: p.shockRadiusM, age: 0, life: 0.35 });
         return `${gem(id).name} 震波 擊中 ${hit.length} 隻`;
       } };
@@ -90,12 +119,13 @@ window.G = window.G || {};
       const d = G.dist(t, HERO) || 1, ux = t.x / d, uy = t.y / d;
       const centers = p.stages.map(s => ({ x: ux * s.distM, y: uy * s.distM, r: s.radiusM, pct: basePct(id, s.pctColumn) }));
       if (within(S, centers[0], centers[0].r).length < (p.minTargets || 1)) return null;
-      return { dur: 1 / hero.attacksPerSec + (p.extraTimeSec || 0), fire(killed) {
+      const mo = p.mods;
+      return { dur: (1 / hero.attacksPerSec + (p.extraTimeSec || 0)) / mo.speedMult, fire(killed) {
         let total = 0;
         for (const c of centers) {
           const hit = within(S, c, c.r);
           total += hit.length;
-          hitAll(S, hit, Math.round(c.pct * hero.attack), killed);
+          hitAll(S, hit, Math.round(c.pct * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
           S.fx.push({ type: "circle", x: c.x, y: c.y, r: c.r, age: 0, life: 0.4 });
         }
         return `${gem(id).name} 兩段共擊中 ${total} 隻`;
@@ -116,8 +146,9 @@ window.G = window.G || {};
       if (within(S, m, p.spreadRadiusM).length - 1 < (p.minNearby || 0)) continue;
       if (d < bd) { best = m; bd = d; }
     }
-    return best && { dur: gem(id).castTimeSec, fire() {
-      G.applyContagion(best, dotPerSec(id, hero), p.durationSec, 0);
+    const mo = p.mods;
+    return best && { dur: gem(id).castTimeSec / mo.speedMult, fire() {
+      G.applyContagion(best, dotPerSec(id, hero) * mo.dmgMult, p.durationSec, 0, p.spreadRadiusM);
       S.fx.push({ type: "ring", x: best.x, y: best.y, r: 0.5, age: 0, life: 0.3 });
       return `${gem(id).name} 感染 1 隻`;
     } };
@@ -138,13 +169,14 @@ window.G = window.G || {};
       c = at; break;
     }
     if (!c) return null;
-    return { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100), fire(killed) {
+    const mo = p.mods, k = mo.hitMult * mo.dmgMult * mo.areaMult;
+    return { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100) / mo.speedMult, fire(killed) {
       const hit = within(S, c, p.radiusM);
-      hitAll(S, hit, Math.round(basePct(id, p.slamPctColumn) * hero.attack), killed);
+      hitAll(S, hit, Math.round(basePct(id, p.slamPctColumn) * hero.attack * k), killed);
       S.grounds.push({ x: c.x, y: c.y, r: p.radiusM, remain: p.delaySec, total: p.delaySec, name: gem(id).name,
-        dmg: Math.round(basePct(id, p.aftershockPctColumn) * hero.attack) });
+        dmg: Math.round(basePct(id, p.aftershockPctColumn) * hero.attack * k) });
       S.fx.push({ type: "circle", x: c.x, y: c.y, r: p.radiusM, age: 0, life: 0.35 });
-      return `${gem(id).name} 擊中 ${hit.length} 隻，${p.delaySec} 秒後餘震`;
+      return `${gem(id).name} 擊中 ${hit.length} 隻，${+p.delaySec.toFixed(1)} 秒後餘震`;
     } };
   };
 
@@ -160,9 +192,9 @@ window.G = window.G || {};
   G.chooseAction = function (S, hero) {
     for (const id of G.heroSkills(hero)) {
       if (S.skillOn[id] === false) continue;
-      const cost = G.skillManaCost(id, hero.level);
+      const cost = G.skillCost(S, hero, id);
       if (S.mp < cost) continue;
-      const plan = PLAN[play(id).kind](S, hero, id, play(id));
+      const plan = PLAN[play(id).kind](S, hero, id, eff(S, id));
       if (plan) return { id, cost, ...plan };
     }
     return basicPlan(S, hero);
@@ -177,7 +209,7 @@ window.G = window.G || {};
     while (S.pending && S.heroTimer >= S.pending.dur) {
       S.heroTimer -= S.pending.dur;
       // 出手瞬間重新看一次（怪可能走了、死了）
-      const now = S.pending.id === "basic" ? basicPlan(S, hero) : (S.mp >= S.pending.cost && PLAN[play(S.pending.id).kind](S, hero, S.pending.id, play(S.pending.id)));
+      const now = S.pending.id === "basic" ? basicPlan(S, hero) : (S.mp >= S.pending.cost && PLAN[play(S.pending.id).kind](S, hero, S.pending.id, eff(S, S.pending.id)));
       if (now) {
         S.mp -= S.pending.cost;
         const msg = now.fire(killed);

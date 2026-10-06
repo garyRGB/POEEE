@@ -73,7 +73,8 @@ window.G = window.G || {};
         ctx.fillStyle = css("--mana"); ctx.globalAlpha = Math.max(0, a * 0.18); ctx.fill();
       } else {
         ctx.strokeStyle = css("--gold"); ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        const from = f.fx !== undefined ? toPx({ x: f.fx, y: f.fy }) : c; // 連鎖從上一隻跳過來
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(p.x, p.y); ctx.stroke();
       }
       ctx.globalAlpha = 1; ctx.lineWidth = 1;
     }

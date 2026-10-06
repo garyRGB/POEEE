@@ -154,3 +154,19 @@ html,body{height:100%}
 :root{--chaos:#7A3FA8}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--chaos:#B57BE0}}
 :root[data-theme="dark"]{--chaos:#B57BE0}
+
+/* 技能與輔助寶石（#16，在「角色」頁） */
+.box h3.sub{margin-top:16px}
+.skillRow{border-top:1px solid var(--line);padding:8px 0}
+.skillHead{display:flex;align-items:baseline;gap:8px}
+.skillHead small{font-size:11px;color:var(--soft)}
+.socks{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.sock{border:1px dashed var(--line);border-radius:4px;padding:8px 6px;font-size:14px;color:var(--soft);min-height:40px}
+.sock.filled{border-style:solid;color:var(--ink);border-color:var(--m);font-weight:700}
+.sock.on{outline:2px solid var(--gold)}
+.picker{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.pick{text-align:left;border:1px solid var(--line);border-radius:4px;padding:8px;background:var(--bg);display:flex;flex-direction:column;gap:2px}
+.pick span{font-size:12px;color:var(--soft)}
+.pick em{font-size:12px;font-style:normal;color:var(--life)}
+.pick:disabled{opacity:.55}
+.pick.out{color:var(--life);font-weight:700}

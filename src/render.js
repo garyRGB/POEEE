@@ -24,9 +24,9 @@ window.G = window.G || {};
 
     $("monCount").textContent = S.monsters.length;
     $("skillbar").innerHTML = G.heroSkills(hero).map(id => {
-      const g = DATA.skills.gems[id], cost = G.skillManaCost(id, hero.level);
+      const g = DATA.skills.gems[id], cost = G.skillCost(S, hero, id), n = S.sockets[id].filter(Boolean).length;
       const lit = S.lastCast && S.lastCast.id === id && S.lastCast.t > 0, off = S.skillOn[id] === false;
-      return `<span class="skill${lit ? " lit" : ""}${off ? " off" : ""}${S.mp < cost ? " poor" : ""}" data-skill="${id}">${g.name}<small>${cost ? cost + " 魔" : "免魔"}・Lv${G.gemLevel(id, hero.level)}</small></span>`;
+      return `<span class="skill${lit ? " lit" : ""}${off ? " off" : ""}${S.mp < cost ? " poor" : ""}" data-skill="${id}">${g.name}<small>${cost ? cost + " 魔" : "免魔"}・Lv${G.gemLevel(id, hero.level)}${n ? "・" + "◆".repeat(n) : ""}</small></span>`;
     }).join("");
     if (G.drawArena) G.drawArena(S, hero, DATA.rules);
 

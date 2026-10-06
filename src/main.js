@@ -1,6 +1,6 @@
 // 啟動：檢查資料 → 選角 → 建立狀態、接上按鈕。各系統的規則放各自的檔案，這裡只負責串起來。
 (function () {
-  const need = ["classes", "monsters", "rules", "skills", "supports", "skillPlay"];
+  const need = ["classes", "monsters", "rules", "skills", "supports", "skillPlay", "supportPlay"];
   const missing = need.filter(k => !window.DATA || !DATA[k]);
   if (missing.length) {
     reportError(`資料檔沒有載入：${missing.map(k => "data/" + k + ".js").join("、")}`);
@@ -20,6 +20,7 @@
 
     G.setupAutoPanel(S);
     G.setupSheets();
+    G.setupSocketPanel(S, hero);
 
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）

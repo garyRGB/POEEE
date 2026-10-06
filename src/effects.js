@@ -1,10 +1,11 @@
 // 持續效果：只負責「怪身上的持續傷害（瘟疫）」和「地上的延遲爆炸（震地的碎裂地面）」每一步怎麼算。
 window.G = window.G || {};
 (function () {
-  // 掛瘟疫：每秒傷害 dps，持續 sec 秒；spreads＝已經擴散過幾次（越多傷害越高）
-  G.applyContagion = function (m, dps, sec, spreads) {
+  // 掛瘟疫：每秒傷害 dps，持續 sec 秒；spreads＝已經擴散過幾次（越多傷害越高）；radius、sec 會跟著擴散傳下去（輔助寶石改過的也算）
+  G.applyContagion = function (m, dps, sec, spreads, radius) {
     if (m.hp <= 0) return;
-    m.contagion = { dps, remain: sec, spreads, acc: 0 };
+    const p = DATA.skillPlay.skills.Contagion;
+    m.contagion = { dps, remain: sec, total: sec, spreads, acc: 0, radius: radius || p.spreadRadiusM };
   };
 
   // 怪死掉時：身上有瘟疫就傳給附近的怪，刷新持續時間、傷害變高（上限照 poe2db）
@@ -16,10 +17,10 @@ window.G = window.G || {};
     const more = Math.min(spreads * p.spreadMorePct, p.spreadMaxMorePct) / 100;
     const base = c.dps / (1 + Math.min(c.spreads * p.spreadMorePct, p.spreadMaxMorePct) / 100);
     for (const o of S.monsters) {
-      if (o === m || o.hp <= 0 || G.dist(o, m) > p.spreadRadiusM) continue;
-      G.applyContagion(o, base * (1 + more), p.durationSec, spreads);
+      if (o === m || o.hp <= 0 || G.dist(o, m) > c.radius) continue;
+      G.applyContagion(o, base * (1 + more), c.total, spreads, c.radius);
     }
-    S.fx.push({ type: "ring", x: m.x, y: m.y, r: p.spreadRadiusM, age: 0, life: 0.4 });
+    S.fx.push({ type: "ring", x: m.x, y: m.y, r: c.radius, age: 0, life: 0.4 });
   };
 
   // 每步：瘟疫扣血、地面倒數到 0 就爆
