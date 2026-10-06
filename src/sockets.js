@@ -15,10 +15,9 @@ window.G = window.G || {};
   G.socketProblem = function (S, skillId, slot, supId) {
     if (!G.supportFits(skillId, supId)) return `${supGem(supId).name} 只能插在「${sp(supId).needTags.join("或")}」技能`;
     const others = S.sockets[skillId].filter((x, i) => i !== slot && x);
+    if (others.includes(supId)) return `這招已經插了一顆 ${supGem(supId).name}，同一招不能插兩顆一樣的`;
     if (others.some(o => supGem(o).category === supGem(supId).category)) return `同一個技能不能插兩顆「${supGem(supId).category}」類別`;
-    const usedElsewhere = G.supportUsed(S, supId) - (S.sockets[skillId][slot] === supId ? 1 : 0);
-    if (usedElsewhere >= (DATA.supportPlay.stock[supId] || 0)) return `${supGem(supId).name} 只有 ${DATA.supportPlay.stock[supId] || 0} 顆，已經插在別的技能`;
-    return null;
+    return null; // 數量不限：別的技能插著同一顆也可以
   };
 
   // 插或拔（supId 給 null 就是拔掉）；回傳錯誤訊息或 null

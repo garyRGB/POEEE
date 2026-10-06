@@ -785,14 +785,14 @@ const SOCKET_CHECKS = [
     });
     return r.join(",") === "true,true,false,true,true,false,true" || r.join(",");
   }],
-  ["#16 每顆只有 1 個：插在 A 招之後，B 招插不上；拔掉就能換插", async ({ page }) => {
+  ["#16 不同技能可以各插一顆一樣的；同一招不能插兩顆一樣的（Gary 2026-10-06 選 A）", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, [a, b] = G.heroSkills(G.hero).filter(id => G.supportFits(id, "Concentrated_Area"));
       const e1 = G.setSocket(S, a, 0, "Concentrated_Area"), e2 = G.setSocket(S, b, 0, "Concentrated_Area");
-      G.setSocket(S, a, 0, null); const e3 = G.setSocket(S, b, 0, "Concentrated_Area");
-      return { e1, e2: !!e2, e3, at: S.sockets[b][0] };
+      const e3 = G.setSocket(S, a, 1, "Concentrated_Area");
+      return { e1, e2, e3: e3 || "", a: S.sockets[a], b: S.sockets[b] };
     });
-    return (r.e1 === null && r.e2 && r.e3 === null && r.at === "Concentrated_Area") || JSON.stringify(r);
+    return (r.e1 === null && r.e2 === null && /不能插兩顆一樣/.test(r.e3) && r.a[1] === null && r.b[0] === "Concentrated_Area") || JSON.stringify(r);
   }],
   ["#16 連鎖 I（女巫混沌弩箭）：打完目標再跳 1 隻，每下 30% 更少", async ({ page }) => {
     const r = await page.evaluate(() => {
