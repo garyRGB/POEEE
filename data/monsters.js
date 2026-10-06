@@ -7,10 +7,10 @@ DATA.monsters = [
     id: "rotting_corpse",
     name: "腐屍",
     baseLife: 20,            // Lv 1 生命
-    lifeGrowth: 1,           // 每升 1 級，生命多 Lv1 的幾倍（1 ＝ 跟等級成正比）
-    baseAttack: 1,           // Lv 1 攻擊
-    attackGrowth: 1,         // 每升 1 級，攻擊多 Lv1 的幾倍
-    attacksPerSec: 0.1,      // 每秒攻擊次數（不隨等級變）；9 隻同時打每秒約扣 0.9 × 等級
+    lifeGrowth: 0.12,        // 每升 1 級，生命多 Lv1 的幾倍（1 ＝ 跟等級成正比）。第 2 階段 #2 模擬定（角色照 POE2 成長變慢）
+    baseAttack: 0.6,         // Lv 1 攻擊（原本 1；角色 Lv1 生命從 80～120 降到 42～50）
+    attackGrowth: 0.25,      // 每升 1 級，攻擊多 Lv1 的幾倍
+    attacksPerSec: 0.1,      // 每秒攻擊次數（不隨等級變）
     firstAttackSec: 1.0,     // 走到角色身邊後幾秒打第一下（之後照攻速）
     moveSpeed: 1.2,          // 每秒走幾公尺
     meleeRangeM: 0.9,        // 離角色多近才出手（公尺，中心到中心）

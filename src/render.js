@@ -34,7 +34,7 @@ window.G = window.G || {};
       ["武器", hero.weapon.name], ["生命", hero.maxLife],
       ["武器傷害", hero.attacksPerSec ? G.weaponRange(hero.weapon).join("～") : "不能攻擊"], ["攻速", hero.attacksPerSec ? hero.attacksPerSec + "/秒" : "—"],
       ["魔力", hero.maxMana], ["回魔", hero.manaRegen + "/秒"],
-      ["力量／敏捷／智慧", `${hero.str}／${hero.dex}／${hero.int}`], ["藥水回復", hero.potionHealPct + "%"]
+      ["力／敏／智", `${hero.str}／${hero.dex}／${hero.int}`], ["藥水回復", hero.potionHealPct + "%"]
     ].map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("");
   };
 
