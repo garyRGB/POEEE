@@ -531,8 +531,9 @@ const POTION_CHECKS = [
     return (pot === "4" && feed.includes("自動喝藥水") && btn === 0) || `藥水 ${pot}、按鈕 ${btn}、${feed}`;
   }],
   // #18 數值總調整後（2026-10-06）兩個職業都測。模擬：女巫約 8～13 分鐘、決鬥者約 8～10 分鐘喝第一瓶，留點餘裕用 20 分鐘。
-  ["#7 實戰：女巫、決鬥者放置 20 分鐘內會自動喝到藥水", async ({ page }) => {
-    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 12000; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
+  // 第 2 階段 #2 後女巫偏強，10 次約 1 次 20 分鐘不用喝藥 → 喝水門檻設 80%，驗「實戰中自動喝水有作用」，不靠運氣
+  ["#7 實戰：女巫、決鬥者放置 20 分鐘內會自動喝到藥水（喝水門檻設 80%）", async ({ page }) => {
+    const r = await page.evaluate(() => { G.S.autoRules[0].value = 80; const p0 = G.S.potions; for (let i = 0; i < 12000 && G.S.potions === p0; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
     return r.used > 0 || JSON.stringify(r);
   }],
   // #18：模擬兩個職業最早約 20 分鐘倒下、場上最多約 25 隻；這裡抓寬一點，避免運氣差誤報
