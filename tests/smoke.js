@@ -562,6 +562,28 @@ const LAYOUT_CHECKS = [
   }],
 ];
 
+// #13 技能資料（照抄 poe2db）
+const SKILLDATA_CHECKS = [
+  ["#13 每個職業 3 招主動技能，都有資料", async ({ page }) => {
+    const r = await page.evaluate(() => Object.fromEntries(Object.entries(DATA.skills.byClass).map(([c, ids]) => [c, ids.filter(id => DATA.skills.gems[id]).length])));
+    return (r.witch === 3 && r.duelist === 3) || JSON.stringify(r);
+  }],
+  ["#13 主動技能：名字、標籤、說明、poe2db 連結、1～40 級數值表都有", async ({ page }) => {
+    const bad = await page.evaluate(() => Object.values(DATA.skills.gems).filter(g =>
+      !(g.name && g.tags.length && g.text && g.source.startsWith("https://poe2db.tw/") && g.levels && g.levels.rows.length >= 20 && g.levels.columns.includes("需要等級"))
+    ).map(g => g.slug));
+    return bad.length === 0 || "缺資料：" + bad.join("、");
+  }],
+  ["#13 耗魔：有第 1 級和第 20 級的數字（POE2 的法杖技能是 0）", async ({ page }) => {
+    const r = await page.evaluate(() => Object.values(DATA.skills.gems).map(g => [g.name, g.manaCost]));
+    return r.every(([, c]) => Array.isArray(c) && c.length === 2 && c[1] >= c[0]) || JSON.stringify(r);
+  }],
+  ["#13 輔助寶石 4 顆：類別、效果、說明都有", async ({ page }) => {
+    const r = await page.evaluate(() => Object.values(DATA.supports.gems).map(g => ({ n: g.name, ok: !!(g.category && g.effects && g.effects.length && g.text) })));
+    return (r.length === 4 && r.every(x => x.ok)) || JSON.stringify(r);
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -632,6 +654,13 @@ const LAYOUT_CHECKS = [
   for (const [name, fn] of LAYOUT_CHECKS) for (const vp of [{ width: 390, height: 844 }, { width: 375, height: 667 }]) {
     const c = await open(browser, url, { start: "witch", viewport: vp });
     report(`${name}（${vp.width}×${vp.height}）`, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of SKILLDATA_CHECKS) {
+    const c = await open(browser, url, { start: "witch" });
+    report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();
   }
