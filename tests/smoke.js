@@ -1096,6 +1096,19 @@ const SKILLRULE_CHECKS = [
     await c.page.close();
   }
 
+  // 測試版：網址加 ?test=1 才是 0 個復活道具、生命一半；正常網址不變
+  for (const cls of ["witch", "duelist"]) {
+    const name = `#19 測試版（?test=1）：開局 0 個復活道具、最大生命一半，升級後也一半；正常網址不變（${CLASS_NAME[cls]}）`;
+    const t = await open(browser, url + "?test=1", { start: cls });
+    const a = await t.page.evaluate(() => { const r = { rev: G.S.revives, life: G.hero.maxLife, hp: G.S.hp, lv1: G.hero.cls.maxLife, name: document.getElementById("heroName").textContent, shown: document.getElementById("revives").textContent };
+      G.onKill(G.S, G.hero, { name: "x", exp: 99999, gold: [0, 0] }, DATA.rules); r.up = G.hero.maxLife / (G.hero.cls.maxLife * G.hero.level); r.base = DATA.classes.list.find(c => c.id === G.hero.id).maxLife; return r; });
+    await t.page.close();
+    const n = await open(browser, url, { start: cls });
+    const b = await n.page.evaluate(() => ({ rev: G.S.revives, life: G.hero.maxLife, name: document.getElementById("heroName").textContent }));
+    await n.page.close();
+    report(name, (a.rev === 0 && a.shown === "0" && a.life === a.base / 2 && a.hp === a.life && a.up === 1 && a.name.includes("測試版") && b.rev === 5 && b.life === a.base && !b.name.includes("測試版")) || JSON.stringify({ a, b }));
+  }
+
   // 資料檔寫錯時，畫面要說錯在哪個檔案
   const broken = await open(browser, url, {
     route: { match: /data\/rules\.js$/, handler: r => r.fulfill({ contentType: "text/javascript", body: "DATA.rules = { maxMonsters: 60,, };" }) }

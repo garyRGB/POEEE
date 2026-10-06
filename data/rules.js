@@ -15,6 +15,10 @@ DATA.rules = {
     mpPct: 100,              // 復活後魔力回到幾 %
     clearMonsters: true      // 復活時清空場上的怪（不清的話常常一復活就又被圍死）
   },
+  testMode: {                // 網址加 ?test=1 的測試版（src/testMode.js），正常網址不受影響
+    revives: 0,              // 開局復活道具
+    lifePct: 50              // 最大生命是正常的幾 %
+  },
   autoRules: [
     { when: "hp_below_pct", value: 40, do: "use_potion" }
   ]

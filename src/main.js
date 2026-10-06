@@ -9,6 +9,7 @@
 
   G.showSelect(DATA.classes, hero => {
     const rules = DATA.rules;
+    G.applyTestMode(hero, rules);
     const S = G.createState(hero, rules);
     G.S = S; G.hero = hero; // 給自動檢查讀狀態用
 
