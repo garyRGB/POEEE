@@ -476,11 +476,15 @@ const POTION_CHECKS = [
     const btn = await page.locator("#game button", { hasText: "藥水" }).count();
     return (pot === "4" && feed.includes("自動喝藥水") && btn === 0) || `藥水 ${pot}、按鈕 ${btn}、${feed}`;
   }],
-  // 2026-10-06 Gary 選 C：#14 後女巫偏強（免魔範圍技），數值等 #18 前的「數值總調整」一起調；這段期間這項只測決鬥者。
-  // 女巫的喝水規則本身由上面 7 項檢查負責。數值總調整做完要改回兩個職業都測。
-  ["#7 實戰：決鬥者放置 12 分鐘內會自動喝到藥水（女巫暫停，見上方說明）", async ({ page }) => {
-    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 7200; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
+  // #18 數值總調整後（2026-10-06）兩個職業都測。模擬：女巫約 8～13 分鐘、決鬥者約 8～10 分鐘喝第一瓶，留點餘裕用 20 分鐘。
+  ["#7 實戰：女巫、決鬥者放置 20 分鐘內會自動喝到藥水", async ({ page }) => {
+    const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 12000; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
     return r.used > 0 || JSON.stringify(r);
+  }],
+  // #18：模擬兩個職業最早約 20 分鐘倒下、場上最多約 25 隻；這裡抓寬一點，避免運氣差誤報
+  ["#18 平衡：女巫、決鬥者放置 15 分鐘還活著，場上最多不超過 40 隻", async ({ page }) => {
+    const r = await page.evaluate(() => { let maxN = 0; for (let i = 0; i < 9000 && !G.S.dead; i++) { G.step(0.1); maxN = Math.max(maxN, G.S.monsters.length); } return { dead: G.S.dead, maxN, lv: G.hero.level }; });
+    return (!r.dead && r.maxN <= 40) || JSON.stringify(r);
   }],
 ];
 
@@ -630,20 +634,23 @@ const SKILL_CHECKS = [
     if (r === "skip") return true;
     return (r.hits.length >= 2 && r.hits.every(d => d >= 5 && d <= 9) && r.far === 1000 && r.mp) || JSON.stringify(r);
   }],
-  ["#14 骨之爆破（女巫）：2 隻以上擠在一起才放，1 公尺內全打到、外面打不到", async ({ page }) => {
+  ["#14 骨之爆破（女巫）：擠在一起的怪夠多（資料 minTargets 隻）才放，1 公尺內全打到、外面打不到", async ({ page }) => {
     const r = await page.evaluate(() => {
       if (G.hero.id !== "witch") return "skip";
-      const S = G.S; clearField(); skillsOnly(["Bone_Blast"]);
-      const a = place(3, 0, { baseLife: 1000, moveSpeed: 0 }), b = place(3.5, 0.3, { baseLife: 1000, moveSpeed: 0 }), out = place(3, 2.5, { baseLife: 1000, moveSpeed: 0 });
-      for (let i = 0; i < 16; i++) G.step(0.05); // 0.8 秒 > 施放 0.75 秒
-      const pair = [a.hp < 1000, b.hp < 1000, out.hp === 1000];
+      const n = DATA.skillPlay.skills.Bone_Blast.minTargets, spots = [[3, 0], [3.4, 0.2], [3.2, -0.4], [2.7, 0.3], [3.5, -0.3], [2.8, -0.2]];
+      const pack = k => spots.slice(0, k).map(([x, y]) => place(x, y, { baseLife: 1000, moveSpeed: 0 }));
       clearField(); skillsOnly(["Bone_Blast"]);
-      const lone = place(3, 0, { baseLife: 1000, moveSpeed: 0 });
+      const full = pack(n), out = place(3, 2.5, { baseLife: 1000, moveSpeed: 0 });
+      for (let i = 0; i < 16; i++) G.step(0.05); // 0.8 秒 > 施放 0.75 秒
+      const hitFull = full.filter(m => m.hp < 1000).length;
+      clearField(); skillsOnly(["Bone_Blast"]);
+      const few = pack(n - 1);
       for (let i = 0; i < 16; i++) G.step(0.05);
-      return { pair, lone: lone.hp };
+      const hitFew = few.filter(m => m.hp < 1000).length; // 少 1 隻不放骨之爆破，最多被普攻打到 1 隻
+      return { n, hitFull, out: out.hp, hitFew };
     });
     if (r === "skip") return true;
-    return (r.pair.every(Boolean) && r.lone === 1000) || JSON.stringify(r);
+    return (r.hitFull === r.n && r.out === 1000 && r.hitFew <= 1) || JSON.stringify(r);
   }],
   ["#14 碎骨（決鬥者）：每下 100% 攻擊力、扣 9 魔；每 3 下震波 200% 打周圍", async ({ page }) => {
     const r = await page.evaluate(() => {

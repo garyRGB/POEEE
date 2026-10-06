@@ -7,7 +7,7 @@ window.DATA = window.DATA || {};
 DATA.skillPlay = {
   // 出手順序：越前面越優先；條件不符（魔力不夠、怪不夠多）就往下找；都不行就普通攻擊
   order: {
-    witch: ["Contagion", "Bone_Blast", "Chaos_Bolt"],
+    witch: ["Bone_Blast", "Contagion", "Chaos_Bolt"],   // 2026-10-06 #18：骨之爆破排第一（怪很多時先炸），平衡用
     duelist: ["Earthquake", "Rolling_Slam", "Boneshatter"]
   },
   skills: {
@@ -37,7 +37,7 @@ DATA.skillPlay = {
       kind: "area",             // 選怪最密集的位置，範圍內全部打到
       rangeM: 4,                // Claude 定：多遠的地方可以放
       radiusM: 1,               // poe2db：範圍 1 公尺
-      minTargets: 2             // Claude 定：範圍內至少 2 隻才放，不然用混沌弩箭
+      minTargets: 5             // Claude 定（#18 平衡）：範圍內至少 5 隻才放，不然用瘟疫、混沌弩箭。改 4 女巫會強很多（40 分鐘不倒），改 6 會變弱
     },
     Boneshatter: {
       kind: "melee",            // 打目標一下
