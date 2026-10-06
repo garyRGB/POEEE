@@ -7,8 +7,9 @@ G.createState = function (hero, rules) {
     dead: false,  // 角色倒下時整個遊戲停住
     heroTimer: 0,   // 角色離下一次出手累積了幾秒
     pending: null,  // 下一次出手要放的招（src/skills.js）
-    skillOn: Object.fromEntries(G.heroSkills(hero).map(id => [id, true])), // 每招開關（#17 做成可以在「自動」頁調）
+    skillOn: Object.fromEntries(G.heroSkills(hero).map(id => [id, true])), // 每招開關（「自動」頁可以調）
     sockets: G.initSockets(hero), // 每招的輔助寶石插槽（src/sockets.js）
+    skillMinMp: Object.fromEntries(G.heroSkills(hero).map(id => [id, 0])), // 每招「魔力高於 X% 才放」，0＝魔力夠就放
     fx: [],         // 技能特效（畫面用）
     grounds: [],    // 地上的碎裂地面（震地），倒數到 0 爆發餘震
     msgs: [],       // 這一步的施放訊息

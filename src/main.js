@@ -21,6 +21,7 @@
     G.setupAutoPanel(S);
     G.setupSheets();
     G.setupSocketPanel(S, hero);
+    G.setupSkillRules(S, hero);
 
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）

@@ -194,6 +194,7 @@ window.G = window.G || {};
       if (S.skillOn[id] === false) continue;
       const cost = G.skillCost(S, hero, id);
       if (S.mp < cost) continue;
+      if (S.mp / hero.maxMana * 100 < (S.skillMinMp[id] || 0)) continue; // 「魔力高於 X% 才放」
       const plan = PLAN[play(id).kind](S, hero, id, eff(S, id));
       if (plan) return { id, cost, ...plan };
     }

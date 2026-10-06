@@ -862,6 +862,64 @@ const SOCKET_CHECKS = [
   }],
 ];
 
+// #17 「自動」頁的技能設定
+const SKILLRULE_CHECKS = [
+  ["#17 「自動」頁列出 3 招，預設全開、魔力門檻 0", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const boxes = await page.locator("#skillRules [data-on]").evaluateAll(els => els.map(e => e.checked));
+    const vals = await page.locator("#skillRules [data-mp]").evaluateAll(els => els.map(e => e.value));
+    return (boxes.length === 3 && boxes.every(Boolean) && vals.every(v => v === "0")) || JSON.stringify({ boxes, vals });
+  }],
+  ["#17 取消打勾的技能不會放", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const id = await page.evaluate(() => G.heroSkills(G.hero).find(i => G.skillManaCost(i, 1) === 0) || G.heroSkills(G.hero)[0]);
+    await page.locator(`#skillRules [data-on="${id}"]`).uncheck();
+    await page.locator("#autoClose").click();
+    const r = await page.evaluate(id => {
+      const S = G.S; S.mp = G.hero.maxMana = 1000;
+      let used = 0;
+      for (let i = 0; i < 1200; i++) { G.step(0.05); if (S.lastCast && S.lastCast.id === id && S.lastCast.t > 0.39) used++; }
+      return { on: S.skillOn[id], used };
+    }, id);
+    return (r.on === false && r.used === 0) || JSON.stringify(r);
+  }],
+  ["#17 魔力門檻：設 60%，魔力 50% 時不放、70% 時會放", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const id = await page.evaluate(() => G.heroSkills(G.hero).find(i => G.skillManaCost(i, 1) > 0));
+    await page.locator(`#skillRules [data-mp="${id}"]`).fill("60");
+    await page.locator(`#skillRules [data-mp="${id}"]`).dispatchEvent("change");
+    await page.locator("#autoClose").click();
+    const r = await page.evaluate(id => {
+      const S = G.S, h = G.hero; clearField(); skillsOnly([id]); S.skillMinMp[id] = 60; // clearField 會關技能，這裡只開這一招
+      for (const [x, y] of [[1, 0], [1.3, 0.3], [1.5, -0.3], [1.2, 0.5]]) place(x, y, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 });
+      h.manaRegen = 0;
+      S.mp = h.maxMana * 0.5; const a = S.mp; for (let i = 0; i < 60; i++) G.step(0.05);
+      const low = a - S.mp;
+      S.mp = h.maxMana * 0.7; S.pending = null; const b = S.mp; for (let i = 0; i < 60; i++) G.step(0.05);
+      return { set: S.skillMinMp[id], low, high: b - S.mp };
+    }, id);
+    return (r.set === 60 && r.low === 0 && r.high > 0) || JSON.stringify(r);
+  }],
+  ["#17 魔力門檻打錯（abc、空白）保留原值並提示", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    const input = page.locator("#skillRules [data-mp]").first();
+    const bad = [];
+    for (const v of ["abc", ""]) {
+      await input.fill(v); await input.dispatchEvent("change");
+      const now = await input.inputValue(), hint = await page.locator("#skillRuleHint").innerText();
+      if (now !== "0" || !hint.includes("0～99")) bad.push(`${v || "空白"}→${now}`);
+    }
+    return bad.length === 0 || bad.join("、");
+  }],
+  ["#17 技能列：關掉的技能有刪除線", async ({ page }) => {
+    await page.locator("#autoBtn").click();
+    await page.locator("#skillRules [data-on]").first().uncheck();
+    await page.locator("#autoClose").click();
+    await page.evaluate(() => G.render(G.S, G.hero));
+    return (await page.locator("#skillbar .skill.off").count()) === 1;
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -960,6 +1018,14 @@ const SOCKET_CHECKS = [
   }
 
   for (const [title, fn] of SOCKET_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = `${title}（${CLASS_NAME[cls]}）`;
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of SKILLRULE_CHECKS) for (const cls of ["witch", "duelist"]) {
     const c = await open(browser, url, { start: cls });
     const name = `${title}（${CLASS_NAME[cls]}）`;
     report(name, await run(fn, c));

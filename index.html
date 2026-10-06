@@ -82,6 +82,10 @@
     <h3>自動規則</h3>
     <label class="autoRow">生命低於 <input id="potPct" type="text" inputmode="numeric" maxlength="2" autocomplete="off"> % 自動喝藥水</label>
     <p class="hint" id="potHint"></p>
+    <h3 class="sub">技能</h3>
+    <p class="hint">打勾＝自動放；照列出的順序，前面的先放。魔力高於幾 % 才放（0＝魔力夠就放）。</p>
+    <div id="skillRules"></div>
+    <p class="hint" id="skillRuleHint" role="status"></p>
     <p class="hint">還沒有存檔功能，重新整理會回到預設值。</p>
     <div class="acts"><button class="btn line" id="autoClose">關閉</button></div>
   </div>
@@ -110,6 +114,7 @@
 <script src="src/mana.js"></script>
 <script src="src/autoRules.js"></script>
 <script src="src/autoPanel.js"></script>
+<script src="src/skillRulesPanel.js"></script>
 <script src="src/sheets.js"></script>
 <script src="src/socketPanel.js"></script>
 <script src="src/arenaView.js"></script>

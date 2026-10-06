@@ -170,3 +170,9 @@ html,body{height:100%}
 .pick em{font-size:12px;font-style:normal;color:var(--life)}
 .pick:disabled{opacity:.55}
 .pick.out{color:var(--life);font-weight:700}
+
+/* 「自動」頁的技能設定（#17） */
+.ruleRow{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding:8px 0}
+.ruleOn{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px}
+.ruleOn input{width:22px;height:22px;accent-color:var(--gold)}
+.autoRow.small{font-size:15px;padding-left:30px}
