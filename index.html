@@ -33,6 +33,11 @@
       <div class="hpb mpb"><i id="heroMp"></i><span id="heroMpText" class="num"></span></div>
     </div>
     <div class="feed" id="feed"></div>
+    <div class="deathScreen" id="deathScreen" hidden>
+      <p class="dTitle">你倒下了</p>
+      <p class="hint">沒有復活道具了。怪物有機率掉復活道具。</p>
+      <button class="btn gold" id="reviveBtn">復活（免費）</button>
+    </div>
     <div class="skillbar" id="skillbar"></div>
     <div class="ctrl">
       <div class="items num"><span>藥水 <b id="potions"></b></span><span>復活 <b id="revives"></b></span><span>場上 <b id="monCount">0</b></span></div>
@@ -110,6 +115,7 @@
 <script src="src/effects.js"></script>
 <script src="src/sockets.js"></script>
 <script src="src/progress.js"></script>
+<script src="src/revive.js"></script>
 <script src="src/tap.js"></script>
 <script src="src/mana.js"></script>
 <script src="src/autoRules.js"></script>

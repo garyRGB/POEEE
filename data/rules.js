@@ -10,6 +10,11 @@ DATA.rules = {
   spawnOutsideM: 1,          // 在框外幾公尺生出來，再走進場
   tapReduceSec: 0.5,         // 點戰場一下，下一群提早幾秒
   levelExpBase: 50,          // 升級要的經驗 = 50 × 目前等級²（怪物經驗 = 5 × 等級，所以 Lv N 要打約 10 × N 隻）
+  revive: {                  // 死亡與復活（#19，Claude 定、Gary 可改）
+    hpPct: 100,              // 復活後生命回到幾 %
+    mpPct: 100,              // 復活後魔力回到幾 %
+    clearMonsters: true      // 復活時清空場上的怪（不清的話常常一復活就又被圍死）
+  },
   autoRules: [
     { when: "hp_below_pct", value: 40, do: "use_potion" }
   ]

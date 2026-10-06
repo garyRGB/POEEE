@@ -22,18 +22,21 @@
     G.setupSheets();
     G.setupSocketPanel(S, hero);
     G.setupSkillRules(S, hero);
+    G.setupDeathScreen(S, hero, rules);
 
     G.step = dt => {
-      if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
+      if (S.dead) return; // 沒有復活道具：停在死亡畫面，整個遊戲停住，按「復活」才繼續
       G.spawnTick(S, dt, rules, DATA.monsters, hero.level); // 進場不顯示文字（Gary 2026-10-06）
       G.moveTick(S, dt);
       const killed = G.combatTick(S, dt, hero);
       S.castLog.push(...S.msgs.splice(0)); S.castLog.splice(0, S.castLog.length - 50); // 施放訊息留給 #19 戰鬥紀錄，戰場上只顯示擊倒、升級
       for (const msg of G.onKills(S, hero, killed, rules)) G.feed(msg);
+      for (const msg of G.reviveDrops(S, killed)) G.feed(msg);
       G.manaTick(S, hero, dt);
       for (const msg of G.autoRulesTick(S, hero, rules)) G.feed(msg);
-      if (S.dead) G.feed("你倒下了");
+      if (S.dead) for (const msg of G.onDeath(S, hero, rules)) G.feed(msg);
       G.render(S, hero);
+      G.showDeath();
     };
     // 遊戲迴圈：每 0.05 秒走一步（畫面每秒 20 格）。G.step 也給自動檢查用來快轉時間。
     setInterval(() => G.step(0.05), 50);

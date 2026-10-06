@@ -285,9 +285,9 @@ const COMBAT_CHECKS = [
     const n = await page.locator("#monCount").innerText();
     return (hp < full && n === "6") || `角色血 ${hp}/${full}、場上 ${n}`;
   }],
-  ["#4 角色血到 0 就倒下，整個停住，血不會變負的", async ({ page }) => {
+  ["#4 角色血到 0 就倒下，整個停住，血不會變負的（沒有復活道具時，見 #19）", async ({ page }) => {
     const r = await page.evaluate(() => {
-      const S = G.S; clearField();
+      const S = G.S; clearField(); S.revives = 0;
       for (let k = 0; k < 8; k++) place(Math.cos(k) * 0.8, Math.sin(k) * 0.8, { baseLife: 100000, baseAttack: 50 });
       for (let i = 0; i < 100; i++) G.step(0.1);
       const pos = S.monsters.map(m => m.x + "," + m.y).join(";"), hp0 = S.monsters[0].hp;
@@ -485,6 +485,54 @@ const POTION_CHECKS = [
   ["#18 平衡：女巫、決鬥者放置 15 分鐘還活著，場上最多不超過 40 隻", async ({ page }) => {
     const r = await page.evaluate(() => { let maxN = 0; for (let i = 0; i < 9000 && !G.S.dead; i++) { G.step(0.1); maxN = Math.max(maxN, G.S.monsters.length); } return { dead: G.S.dead, maxN, lv: G.hero.level }; });
     return (!r.dead && r.maxN <= 40) || JSON.stringify(r);
+  }],
+];
+
+// #19 死亡與復活
+const REVIVE_CHECKS = [
+  ["#19 有復活道具時倒下：自動復活、扣 1 個，生命魔力回滿，場上的怪清空", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; clearField(); S.revives = 2; S.mp = 0;
+      for (let k = 0; k < 8; k++) place(Math.cos(k) * 0.8, Math.sin(k) * 0.8, { baseLife: 100000, baseAttack: 500 });
+      let steps = 0; while (S.revives === 2 && steps < 300) { G.step(0.1); steps++; }
+      return { revives: S.revives, dead: S.dead, hp: S.hp, max: G.hero.maxLife, mp: S.mp, maxMp: G.hero.maxMana, mons: S.monsters.length, timer: S.packTimer,
+        shown: !document.getElementById("deathScreen").hidden, txt: document.getElementById("revives").textContent };
+    });
+    const feed = await page.locator("#feed").innerText();
+    return (r.revives === 1 && !r.dead && r.hp === r.max && r.mp === r.maxMp && r.mons === 0 && r.timer <= 3 && !r.shown && r.txt === "1" && feed.includes("自動用掉 1 個復活道具"))
+      || JSON.stringify(r) + feed;
+  }],
+  ["#19 沒有復活道具時倒下：顯示死亡畫面，遊戲停住；按「復活」免費回到戰鬥", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; clearField(); S.revives = 0;
+      for (let k = 0; k < 8; k++) place(Math.cos(k) * 0.8, Math.sin(k) * 0.8, { baseLife: 100000, baseAttack: 500 });
+      for (let i = 0; i < 300 && !S.dead; i++) G.step(0.1);
+      const exp0 = S.exp, mons0 = S.monsters.length;
+      for (let i = 0; i < 50; i++) G.step(0.1);
+      return { dead: S.dead, frozen: S.exp === exp0 && S.monsters.length === mons0, shown: !document.getElementById("deathScreen").hidden };
+    });
+    if (!(r.dead && r.frozen && r.shown)) return "倒下時：" + JSON.stringify(r);
+    await page.click("#reviveBtn");
+    const a = await page.evaluate(() => ({ dead: G.S.dead, hp: G.S.hp, max: G.hero.maxLife, revives: G.S.revives, mons: G.S.monsters.length, shown: !document.getElementById("deathScreen").hidden }));
+    const b = await page.evaluate(() => { for (let i = 0; i < 60; i++) G.step(0.1); return G.S.monsters.length; }); // 6 秒內新的一群會來
+    return (!a.dead && a.hp === a.max && a.revives === 0 && a.mons === 0 && !a.shown && b > 0) || "按復活後：" + JSON.stringify(a) + " 6 秒後場上 " + b;
+  }],
+  ["#19 怪物會掉復活道具（機率寫在 data/monsters.js），數量顯示會更新", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; clearField(); S.revives = 0;
+      const chance = DATA.monsters[0].reviveDropChance;
+      for (const k in S.skillOn) S.skillOn[k] = true;
+      for (let k = 0; k < 3; k++) place(0.6 + k * 0.1, 0, { baseLife: 0.01, moveSpeed: 0, reviveDropChance: 1 });
+      for (let i = 0; i < 100 && S.monsters.length; i++) G.step(0.1);
+      return { chance, got: S.revives, txt: document.getElementById("revives").textContent };
+    });
+    const feed = await page.locator("#feed").innerText();
+    r.after = await page.evaluate(() => {
+      for (let k = 0; k < 3; k++) place(0.6 + k * 0.1, 0, { baseLife: 0.01, moveSpeed: 0, reviveDropChance: 0 });
+      for (let i = 0; i < 100 && G.S.monsters.length; i++) G.step(0.1);
+      return G.S.revives;
+    });
+    return (r.chance > 0 && r.chance < 1 && r.got === 3 && r.txt === "3" && r.after === 3 && feed.includes("撿到復活道具")) || JSON.stringify(r) + feed;
   }],
 ];
 
@@ -1033,6 +1081,14 @@ const SKILLRULE_CHECKS = [
   }
 
   for (const [title, fn] of SKILLRULE_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = `${title}（${CLASS_NAME[cls]}）`;
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of REVIVE_CHECKS) for (const cls of ["witch", "duelist"]) {
     const c = await open(browser, url, { start: cls });
     const name = `${title}（${CLASS_NAME[cls]}）`;
     report(name, await run(fn, c));
