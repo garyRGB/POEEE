@@ -471,7 +471,9 @@ const POTION_CHECKS = [
     const btn = await page.locator("#game button", { hasText: "藥水" }).count();
     return (pot === "4" && feed.includes("自動喝藥水") && btn === 0) || `藥水 ${pot}、按鈕 ${btn}、${feed}`;
   }],
-  ["#7 實戰：女巫、決鬥者放置 12 分鐘內會自動喝到藥水", async ({ page }) => {
+  // 2026-10-06 Gary 選 C：#14 後女巫偏強（免魔範圍技），數值等 #18 前的「數值總調整」一起調；這段期間這項只測決鬥者。
+  // 女巫的喝水規則本身由上面 7 項檢查負責。數值總調整做完要改回兩個職業都測。
+  ["#7 實戰：決鬥者放置 12 分鐘內會自動喝到藥水（女巫暫停，見上方說明）", async ({ page }) => {
     const r = await page.evaluate(() => { const p0 = G.S.potions; for (let i = 0; i < 7200; i++) G.step(0.1); return { used: p0 - G.S.potions, dead: G.S.dead }; });
     return r.used > 0 || JSON.stringify(r);
   }],
@@ -735,7 +737,7 @@ const SKILL_CHECKS = [
     await c.page.close();
   }
 
-  for (const [title, fn] of POTION_CHECKS) for (const cls of title.includes(BOTH) ? ["witch", "duelist"] : ["witch"]) {
+  for (const [title, fn] of POTION_CHECKS) for (const cls of title.includes(BOTH) ? ["witch", "duelist"] : title.includes("決鬥者") ? ["duelist"] : ["witch"]) {
     const c = await open(browser, url, { start: cls });
     const name = title.replace(BOTH, CLASS_NAME[cls]);
     report(name, await run(fn, c));
