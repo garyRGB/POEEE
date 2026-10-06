@@ -24,19 +24,17 @@
     <button class="rect" disabled>設置</button>
   </div>
 
-  <!-- 戰場：佔掉剩下的高度（#9 先放格子，#10、#11 換成 2D） -->
+  <!-- 戰場：2D 俯視，佔掉剩下的高度；點戰場＝下一群怪提早出現 -->
   <div class="arena" id="battle">
-    <div class="field">
-      <div class="unit hero">
-        <div class="nm m"><span id="heroTitle"></span> <small class="lvTag">Lv<span id="lv"></span></small></div>
-        <div class="hpb"><i id="heroHp"></i><span id="heroHpText" class="num"></span></div>
-        <div class="hpb mpb"><i id="heroMp"></i><span id="heroMpText" class="num"></span></div>
-      </div>
-      <div class="monsters" id="monsters"></div>
+    <canvas id="arenaCanvas" aria-label="戰場"></canvas>
+    <div class="heroTag" id="heroTag">
+      <div class="nm m"><span id="heroTitle"></span> <small class="lvTag">Lv<span id="lv"></span></small></div>
+      <div class="hpb"><i id="heroHp"></i><span id="heroHpText" class="num"></span></div>
+      <div class="hpb mpb"><i id="heroMp"></i><span id="heroMpText" class="num"></span></div>
     </div>
     <div class="feed" id="feed"></div>
     <div class="ctrl">
-      <div class="items num"><span>藥水 <b id="potions"></b></span><span>復活 <b id="revives"></b></span></div>
+      <div class="items num"><span>藥水 <b id="potions"></b></span><span>復活 <b id="revives"></b></span><span>場上 <b id="monCount">0</b></span></div>
       <button class="btn gold soon" id="atlasBtn" aria-disabled="true">輿圖</button>
     </div>
   </div>
@@ -91,7 +89,9 @@
 <script src="src/state.js"></script>
 <script src="src/render.js"></script>
 <script src="src/select.js"></script>
+<script src="src/world.js"></script>
 <script src="src/spawn.js"></script>
+<script src="src/movement.js"></script>
 <script src="src/combat.js"></script>
 <script src="src/progress.js"></script>
 <script src="src/tap.js"></script>
@@ -99,6 +99,7 @@
 <script src="src/autoRules.js"></script>
 <script src="src/autoPanel.js"></script>
 <script src="src/sheets.js"></script>
+<script src="src/arenaView.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

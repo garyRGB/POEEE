@@ -1,42 +1,51 @@
 // 戰鬥：只負責「誰打誰、扣多少血」。不碰畫面、不發獎勵。
-// 角色鎖定一隻怪打到死，再換格子順序第 1 隻活著的怪；在場每隻怪都會打角色。
+// 角色打攻擊範圍內最近的怪，鎖定打到死（或離開範圍）才換；只有貼身的怪會打角色。
 window.G = window.G || {};
 (function () {
-  // 目前的目標：正在打的那隻還活著就繼續打；打死了才換格子順序第 1 隻活著的怪
-  G.targetIndex = S => {
-    const cur = S.monsters[S.target];
-    if (S.target != null && cur && cur.hp > 0) return S.target;
-    const i = S.monsters.findIndex(m => m && m.hp > 0);
-    S.target = i < 0 ? null : i;
-    return i;
-  };
+  const HERO = { x: 0, y: 0 };
+  G.inMelee = m => G.dist(m, HERO) <= m.meleeRangeM + 0.01;
 
-  // 回傳這一步被打死的怪（之後 #5 拿去發經驗、金幣）
+  // 目前的目標（怪物物件或 null）
+  G.pickTarget = function (S, hero) {
+    const t = S.target;
+    if (t && t.hp > 0 && S.monsters.includes(t) && G.dist(t, HERO) <= hero.attackRangeM) return t;
+    let best = null, bd = Infinity;
+    for (const m of S.monsters) {
+      const d = G.dist(m, HERO);
+      if (m.hp > 0 && d <= hero.attackRangeM && d < bd) { best = m; bd = d; }
+    }
+    S.target = best;
+    return best;
+  };
+  G.targetIndex = S => S.target ? S.monsters.indexOf(S.target) : -1;
+
+  // 回傳這一步被打死的怪（拿去發經驗、金幣）
   G.combatTick = function (S, dt, hero) {
     const killed = [];
     if (S.dead) return killed;
 
-    // 角色出手：累積時間，夠一次攻擊就打一下
-    const t = G.targetIndex(S);
-    if (t < 0) {
-      S.heroTimer = 0; // 沒有怪就不蓄力，怪一出現才開始算
+    if (!G.pickTarget(S, hero)) {
+      S.heroTimer = 0; // 範圍內沒有怪就不蓄力
     } else {
       S.heroTimer += dt;
       const gap = 1 / hero.attacksPerSec;
       while (S.heroTimer >= gap) {
         S.heroTimer -= gap;
-        const i = G.targetIndex(S);
-        if (i < 0) break;
-        const m = S.monsters[i];
+        const m = G.pickTarget(S, hero);
+        if (!m) break;
         m.hp -= hero.attack;
-        if (m.hp <= 0) { m.hp = 0; killed.push(m); S.monsters[i] = null; }
+        if (m.hp <= 0) {
+          m.hp = 0; killed.push(m);
+          S.monsters.splice(S.monsters.indexOf(m), 1);
+          S.target = null;
+        }
       }
     }
 
-    // 怪物出手：每隻各自計時
+    // 怪物出手：貼身才計時
     for (const m of S.monsters) {
-      if (!m) continue;
-      m.atkTimer = (m.atkTimer || 0) + dt;
+      if (!G.inMelee(m)) continue;
+      m.atkTimer += dt;
       const gap = 1 / m.attacksPerSec;
       while (m.atkTimer >= gap && !S.dead) {
         m.atkTimer -= gap;

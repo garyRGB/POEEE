@@ -126,3 +126,17 @@ html,body{height:100%}
 .nav{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px 0}
 .nav .round{width:100%;height:auto;aspect-ratio:1;max-width:52px;justify-self:center;font-size:13px;border-width:1.5px;box-shadow:none}
 .box .doll{padding:4px 0}
+
+/* ── 2D 戰場（#10～#12） ── */
+:root{--mon:#5B4A3A}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--mon:#B9A58C}}
+:root[data-theme="dark"]{--mon:#B9A58C}
+.arena{padding:0}
+#arenaCanvas{position:absolute;inset:0;display:block}
+.heroTag{position:absolute;left:50%;top:50%;transform:translate(-50%,18px);width:92px;text-align:center;font-size:12px;pointer-events:none;z-index:2}
+.heroTag .nm{font-weight:700;white-space:nowrap}
+.heroTag .lvTag{font-size:10px;color:var(--soft);font-weight:500}
+.heroTag .hpb{height:12px}
+.heroTag .hpb span{font-size:10px;line-height:10px}
+.arena .feed{position:absolute;left:0;right:0;bottom:54px;margin:0;text-align:center;pointer-events:none;z-index:2;text-shadow:0 0 3px var(--bg)}
+.arena .ctrl{z-index:3}

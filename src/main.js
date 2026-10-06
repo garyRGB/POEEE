@@ -13,17 +13,19 @@
     G.S = S; G.hero = hero; // 給自動檢查讀狀態用
 
     document.getElementById("game").hidden = false;
+    G.setupArena(rules); // 主畫面顯示後才量得到戰場大小
     G.renderStatic(hero);
     G.render(S, hero);
     G.feed("等待怪物出現…");
 
-    // 遊戲迴圈：每 0.1 秒走一步。G.step 也給自動檢查用來快轉時間。
     G.setupAutoPanel(S);
     G.setupSheets();
 
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
-      for (const m of G.spawnTick(S, dt, rules, DATA.monsters, hero.level)) G.feed(`${m.name} 出現了`);
+      if (G.spawnTick(S, dt, rules, DATA.monsters, hero.level).length)
+        G.feed(`${DATA.monsters[0].name}群 ×${S.lastPack.n} 從${G.DIR_NAMES[S.lastPack.dir]}方進場`);
+      G.moveTick(S, dt);
       for (const k of G.combatTick(S, dt, hero))
         for (const msg of G.onKill(S, hero, k, rules)) G.feed(msg);
       G.manaTick(S, hero, dt);
@@ -31,11 +33,12 @@
       if (S.dead) G.feed("你倒下了");
       G.render(S, hero);
     };
-    setInterval(() => G.step(0.1), 100);
+    // 遊戲迴圈：每 0.05 秒走一步（畫面每秒 20 格）。G.step 也給自動檢查用來快轉時間。
+    setInterval(() => G.step(0.05), 50);
 
     document.getElementById("atlasBtn").addEventListener("click", () => G.feed("輿圖之後開放"));
 
-    // 點戰鬥框任何地方（輿圖按鈕除外）＝所有空格倒數一起減少
+    // 點戰場任何地方（輿圖按鈕除外）＝下一群怪提早出現
     document.getElementById("battle").addEventListener("click", e => {
       if (e.target.closest("#atlasBtn") || S.dead) return;
       G.tapSpeedUp(S, rules);
