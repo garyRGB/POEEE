@@ -50,6 +50,21 @@ window.G = window.G || {};
       ctx.fillStyle = css("--life"); ctx.fillRect(bx, by, bw * Math.max(0, m.hp / m.maxLife), 3);
     }
 
+    // 技能特效：投射物命中閃一下、範圍技能畫圈
+    for (const f of S.fx || []) {
+      const p = toPx(f), a = 1 - f.age / f.life;
+      ctx.globalAlpha = Math.max(0, a);
+      if (f.type === "circle") {
+        ctx.strokeStyle = css("--mana"); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, f.r * pxPerM, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = css("--mana"); ctx.globalAlpha = Math.max(0, a * 0.18); ctx.fill();
+      } else {
+        ctx.strokeStyle = css("--gold"); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    }
+
     // 角色
     ctx.fillStyle = css("--panel"); ctx.strokeStyle = css("--gold"); ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(c.x, c.y, rules.heroRadiusM * pxPerM, 0, Math.PI * 2); ctx.fill(); ctx.stroke();

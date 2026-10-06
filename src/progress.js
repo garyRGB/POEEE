@@ -13,6 +13,19 @@ window.G = window.G || {};
     hero.manaRegen = hero.cls.manaRegen * hero.level;
   };
 
+  // 同一步打死好幾隻（範圍技能）：合成一行「擊倒 N 隻」，升級訊息另外列
+  G.onKills = function (S, hero, list, rules) {
+    if (list.length === 1) return G.onKill(S, hero, list[0], rules);
+    let exp = 0, gold = 0; const ups = [];
+    for (const m of list) {
+      const e0 = S.exp, g0 = S.gold, lv0 = hero.level;
+      const msgs = G.onKill(S, hero, m, rules);
+      exp += m.exp; gold += S.gold - g0;
+      if (hero.level > lv0) ups.push(...msgs.slice(1));
+    }
+    return list.length ? [`擊倒 ${list.length} 隻，經驗 +${exp}、金幣 +${gold}`, ...ups] : [];
+  };
+
   // 打死一隻怪：給經驗、金幣；經驗夠就升級（升級回滿生命、魔力）。回傳要顯示的訊息。
   G.onKill = function (S, hero, m, rules) {
     const gold = randInt(m.gold);

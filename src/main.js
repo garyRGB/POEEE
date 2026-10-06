@@ -1,6 +1,6 @@
 // 啟動：檢查資料 → 選角 → 建立狀態、接上按鈕。各系統的規則放各自的檔案，這裡只負責串起來。
 (function () {
-  const need = ["classes", "monsters", "rules", "skills", "supports"];
+  const need = ["classes", "monsters", "rules", "skills", "supports", "skillPlay"];
   const missing = need.filter(k => !window.DATA || !DATA[k]);
   if (missing.length) {
     reportError(`資料檔沒有載入：${missing.map(k => "data/" + k + ".js").join("、")}`);
@@ -26,8 +26,9 @@
       if (G.spawnTick(S, dt, rules, DATA.monsters, hero.level).length)
         G.feed(`${DATA.monsters[0].name}群 ×${S.lastPack.n} 從${G.DIR_NAMES[S.lastPack.dir]}方進場`);
       G.moveTick(S, dt);
-      for (const k of G.combatTick(S, dt, hero))
-        for (const msg of G.onKill(S, hero, k, rules)) G.feed(msg);
+      const killed = G.combatTick(S, dt, hero);
+      S.castLog.push(...S.msgs.splice(0)); S.castLog.splice(0, S.castLog.length - 50); // 施放訊息留給 #19 戰鬥紀錄，戰場上只顯示擊倒、升級
+      for (const msg of G.onKills(S, hero, killed, rules)) G.feed(msg);
       G.manaTick(S, hero, dt);
       for (const msg of G.autoRulesTick(S, hero, rules)) G.feed(msg);
       if (S.dead) G.feed("你倒下了");

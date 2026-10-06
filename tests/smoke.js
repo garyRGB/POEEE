@@ -32,7 +32,9 @@ async function open(browser, url, opts = {}) {
   await page.evaluate(() => {
     if (!window.G || !G.S) return;
     window.spawnOnly = dt => G.spawnTick(G.S, dt, DATA.rules, DATA.monsters, G.hero.level);
-    window.clearField = () => { G.S.monsters = []; G.S.target = null; G.S.packTimer = 999; };
+    // 清場：沒有怪、不再生怪、技能先關掉（測普通攻擊用；#14 的檢查會自己打開技能）
+    window.clearField = () => { G.S.monsters = []; G.S.target = null; G.S.packTimer = 999; G.S.pending = null; for (const k in G.S.skillOn) G.S.skillOn[k] = false; };
+    window.skillsOnly = ids => { for (const k in G.S.skillOn) G.S.skillOn[k] = ids.includes(k); G.S.pending = null; };
     // 在 (x, y) 公尺擺一隻怪；over 可以改這隻的基礎數值
     window.place = (x, y, over = {}) => { const m = G.makeMonster({ ...DATA.monsters[0], ...over }, G.hero.level); m.x = x; m.y = y; G.S.monsters.push(m); return m; };
   });
@@ -584,6 +586,103 @@ const SKILLDATA_CHECKS = [
   }],
 ];
 
+// #14 技能施放
+const SKILL_CHECKS = [
+  ["#14 女巫帶混沌弩箭、骨之爆破；決鬥者帶翻騰重擊、碎骨；技能列顯示名字和耗魔", async ({ page }) => {
+    const r = await page.evaluate(() => ({ ids: G.heroSkills(G.hero), bar: document.getElementById("skillbar").innerText.replace(/\s+/g, " ") }));
+    const want = { 女巫: ["混沌弩箭", "骨之爆破"], 決鬥者: ["翻騰重擊", "碎骨"] };
+    const cls = await page.evaluate(() => G.hero.name);
+    return (r.ids.length === 2 && want[cls].every(n => r.bar.includes(n)) && /魔/.test(r.bar)) || JSON.stringify(r);
+  }],
+  ["#14 寶石等級照 poe2db「需要等級」：人物 Lv1 → 寶石 1 級，Lv3 → 2 級，Lv36 → 10 級", async ({ page }) => {
+    const r = await page.evaluate(() => { const id = G.heroSkills(G.hero)[0]; return [1, 3, 36].map(l => G.gemLevel(id, l)); });
+    return r.join(",") === "1,2,10" || r.join(",");
+  }],
+  ["#14 耗魔照 poe2db 每級的數字；放技能會扣魔力", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; clearField();
+      const id = G.hero.id === "witch" ? "Chaos_Bolt" : "Boneshatter";
+      skillsOnly([id]); S.mp = h.maxMana;
+      place(1, 0, { baseLife: 1000, moveSpeed: 0 });
+      const cost = G.skillManaCost(id, h.level);
+      for (let i = 0; i < 30; i++) G.step(0.05);
+      return { cost, spent: +(h.maxMana - S.mp).toFixed(2), regen: h.manaRegen, want: DATA.skills.gems[id].levels.rows[0][DATA.skills.gems[id].levels.columns.indexOf("魔力")] ?? "0" };
+    });
+    // 1.5 秒內至少放 1 次；扣的魔力 = 次數 × 耗魔 − 回魔
+    return (String(r.cost) === String(r.want) && (r.cost === 0 || r.spent > 0)) || JSON.stringify(r);
+  }],
+  ["#14 混沌弩箭（女巫）：射最近的一隻，傷害在 poe2db 第 1 級 5～9 換算的範圍內，耗魔 0", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "witch") return "skip";
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Chaos_Bolt"]);
+      const near = place(2, 0, { baseLife: 1000, moveSpeed: 0 }), far = place(4, 0, { baseLife: 1000, moveSpeed: 0 });
+      const mp0 = S.mp; const hits = [];
+      for (let i = 0; i < 40; i++) { const before = near.hp; G.step(0.05); if (near.hp < before) hits.push(before - near.hp); }
+      return { hits, far: far.hp, mp: S.mp >= mp0 };
+    });
+    if (r === "skip") return true;
+    return (r.hits.length >= 2 && r.hits.every(d => d >= 5 && d <= 9) && r.far === 1000 && r.mp) || JSON.stringify(r);
+  }],
+  ["#14 骨之爆破（女巫）：2 隻以上擠在一起才放，1 公尺內全打到、外面打不到", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "witch") return "skip";
+      const S = G.S; clearField(); skillsOnly(["Bone_Blast"]);
+      const a = place(3, 0, { baseLife: 1000, moveSpeed: 0 }), b = place(3.5, 0.3, { baseLife: 1000, moveSpeed: 0 }), out = place(3, 2.5, { baseLife: 1000, moveSpeed: 0 });
+      for (let i = 0; i < 16; i++) G.step(0.05); // 0.8 秒 > 施放 0.75 秒
+      const pair = [a.hp < 1000, b.hp < 1000, out.hp === 1000];
+      clearField(); skillsOnly(["Bone_Blast"]);
+      const lone = place(3, 0, { baseLife: 1000, moveSpeed: 0 });
+      for (let i = 0; i < 16; i++) G.step(0.05);
+      return { pair, lone: lone.hp };
+    });
+    if (r === "skip") return true;
+    return (r.pair.every(Boolean) && r.lone === 1000) || JSON.stringify(r);
+  }],
+  ["#14 碎骨（決鬥者）：每下 100% 攻擊力、扣 9 魔；每 3 下震波 200% 打周圍", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "duelist") return "skip";
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Boneshatter"]); S.mp = 1000; h.maxMana = 1000; h.manaRegen = 0;
+      const t = place(1, 0, { baseLife: 10000, moveSpeed: 0 }), side = place(1.8, 0.6, { baseLife: 10000, moveSpeed: 0 });
+      const gap = 1 / (h.attacksPerSec * 0.6);
+      G.step(gap + 0.001);
+      const one = 10000 - t.hp, sideAfter1 = side.hp, mp1 = 1000 - S.mp;
+      G.step(gap); G.step(gap);
+      return { one, atk: h.attack, sideAfter1, side: 10000 - side.hp, mp1 };
+    });
+    if (r === "skip") return true;
+    return (r.one === r.atk && r.sideAfter1 === 10000 && r.side === 2 * r.atk && r.mp1 === 9) || JSON.stringify(r);
+  }],
+  ["#14 翻騰重擊（決鬥者）：前方 2 隻以上才放，兩段 75%、150%，扣 14 魔", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      if (G.hero.id !== "duelist") return "skip";
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Rolling_Slam"]); S.mp = 1000; h.maxMana = 1000; h.manaRegen = 0;
+      const a = place(1, 0, { baseLife: 10000, moveSpeed: 0 }), b = place(1.4, 0.4, { baseLife: 10000, moveSpeed: 0 }), c = place(2.3, 0, { baseLife: 10000, moveSpeed: 0 });
+      for (let i = 0; i < Math.ceil((1 / h.attacksPerSec + 1) / 0.05) + 1; i++) G.step(0.05);
+      return { a: 10000 - a.hp, b: 10000 - b.hp, c: 10000 - c.hp, atk: h.attack, mp: 1000 - S.mp };
+    });
+    if (r === "skip") return true;
+    const s1 = Math.round(0.75 * r.atk), s2 = Math.round(1.5 * r.atk);
+    return (r.a === s1 + s2 && r.c === s2 && r.mp >= 14) || JSON.stringify(r);
+  }],
+  ["#14 魔力不夠就改用普通攻擊", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; clearField();
+      skillsOnly(G.heroSkills(h).filter(id => G.skillManaCost(id, h.level) > 0));
+      if (!G.heroSkills(h).some(id => S.skillOn[id])) return "skip"; // 女巫兩招都免魔，不適用
+      S.mp = 0; h.manaRegen = 0;
+      const m = place(1, 0, { baseLife: 1000, moveSpeed: 0 });
+      G.step(1 / h.attacksPerSec + 0.001);
+      return { dmg: 1000 - m.hp, atk: h.attack };
+    });
+    if (r === "skip") return true;
+    return r.dmg === r.atk || JSON.stringify(r);
+  }],
+  ["#14 範圍技能讓清怪變快：女巫、決鬥者放置 4 分鐘，場上不會塞滿 60 隻", async ({ page }) => {
+    const r = await page.evaluate(() => { let max = 0; for (let i = 0; i < 4800; i++) { G.step(0.05); max = Math.max(max, G.S.monsters.length); } return { max, dead: G.S.dead }; });
+    return r.max < 60 || JSON.stringify(r);
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -660,6 +759,14 @@ const SKILLDATA_CHECKS = [
 
   for (const [name, fn] of SKILLDATA_CHECKS) {
     const c = await open(browser, url, { start: "witch" });
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of SKILL_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls });
+    const name = title.includes(BOTH) ? title.replace(BOTH, CLASS_NAME[cls]) : `${title}（${CLASS_NAME[cls]}）`;
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();

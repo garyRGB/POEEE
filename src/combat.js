@@ -19,28 +19,25 @@ window.G = window.G || {};
   };
   G.targetIndex = S => S.target ? S.monsters.indexOf(S.target) : -1;
 
+  // 打一隻怪；打死就移出場上、記進 killed（同一隻不會重複算）
+  G.hitMonster = function (S, m, dmg, killed) {
+    if (m.hp <= 0) return;
+    m.hp -= dmg;
+    if (m.hp <= 0) {
+      m.hp = 0; killed.push(m);
+      const i = S.monsters.indexOf(m);
+      if (i >= 0) S.monsters.splice(i, 1);
+      if (S.target === m) S.target = null;
+    }
+  };
+
   // 回傳這一步被打死的怪（拿去發經驗、金幣）
   G.combatTick = function (S, dt, hero) {
     const killed = [];
     if (S.dead) return killed;
 
-    if (!G.pickTarget(S, hero)) {
-      S.heroTimer = 0; // 範圍內沒有怪就不蓄力
-    } else {
-      S.heroTimer += dt;
-      const gap = 1 / hero.attacksPerSec;
-      while (S.heroTimer >= gap) {
-        S.heroTimer -= gap;
-        const m = G.pickTarget(S, hero);
-        if (!m) break;
-        m.hp -= hero.attack;
-        if (m.hp <= 0) {
-          m.hp = 0; killed.push(m);
-          S.monsters.splice(S.monsters.indexOf(m), 1);
-          S.target = null;
-        }
-      }
-    }
+    // 角色出手：放技能或普通攻擊（src/skills.js）
+    G.heroActTick(S, dt, hero, killed);
 
     // 怪物出手：貼身才計時
     for (const m of S.monsters) {

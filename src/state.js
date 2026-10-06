@@ -5,7 +5,12 @@ G.createState = function (hero, rules) {
     hp: hero.maxLife,
     mp: hero.maxMana,
     dead: false,  // 角色倒下時整個遊戲停住
-    heroTimer: 0, // 角色離下一次攻擊累積了幾秒
+    heroTimer: 0,   // 角色離下一次出手累積了幾秒
+    pending: null,  // 下一次出手要放的招（src/skills.js）
+    skillOn: Object.fromEntries(G.heroSkills(hero).map(id => [id, true])), // 每招開關（#17 做成可以在「自動」頁調）
+    fx: [],         // 技能特效（畫面用）
+    msgs: [],       // 這一步的施放訊息
+    castLog: [],    // 最近 50 筆施放訊息（#19 戰鬥紀錄用）
     exp: 0, gold: 0, diamond: 0, // 鑽石：買稀有通貨用（第 2 階段才有來源）
     potions: hero.potions,
     revives: hero.revives,

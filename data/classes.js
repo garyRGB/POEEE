@@ -18,7 +18,7 @@ DATA.classes = {
       maxLife: 80,
       attack: 12,
       attacksPerSec: 0.8,
-      attackRangeM: 6,    // 普通攻擊打多遠（公尺）：施法者遠距離
+      attackRangeM: 4,    // 普通攻擊打多遠（公尺）：施法者遠距離
       maxMana: 60,        // 最大魔力（放技能時消耗，技能是 #9）
       manaRegen: 2        // 每秒回魔
     },
@@ -31,7 +31,7 @@ DATA.classes = {
       attacksPerSec: 1.3,
       attackRangeM: 1.6,  // 近戰
       maxMana: 40,
-      manaRegen: 1.5
+      manaRegen: 3
     }
   ]
 };

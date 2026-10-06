@@ -138,5 +138,14 @@ html,body{height:100%}
 .heroTag .lvTag{font-size:10px;color:var(--soft);font-weight:500}
 .heroTag .hpb{height:12px}
 .heroTag .hpb span{font-size:10px;line-height:10px}
-.arena .feed{position:absolute;left:0;right:0;bottom:54px;margin:0;text-align:center;pointer-events:none;z-index:2;text-shadow:0 0 3px var(--bg)}
+.arena .feed{position:absolute;left:0;right:0;bottom:92px;margin:0;text-align:center;pointer-events:none;z-index:2;text-shadow:0 0 3px var(--bg)}
 .arena .ctrl{z-index:3}
+
+/* 技能列（#14）：貼在按鈕列上面 */
+.skillbar{position:absolute;left:0;right:0;bottom:52px;display:flex;gap:6px;justify-content:center;padding:4px 8px;z-index:3;pointer-events:none}
+.skill{display:flex;flex-direction:column;align-items:center;min-width:76px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);font-size:13px;font-weight:700;line-height:1.2;transition:background .15s}
+.skill small{font-size:10px;font-weight:500;color:var(--soft)}
+.skill.lit{background:var(--goldBg);color:#2a1e05;border-color:var(--gold)}
+.skill.lit small{color:#2a1e05}
+.skill.poor{opacity:.5}
+.skill.off{opacity:.3;text-decoration:line-through}
