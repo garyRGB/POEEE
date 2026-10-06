@@ -170,6 +170,11 @@ const SPAWN_CHECKS = [
     const r = await page.evaluate(() => { G.S.monsters = []; for (let i = 0; i < 200; i++) { G.S.packTimer = 0; spawnOnly(0.01); } return { n: G.S.monsters.length, max: DATA.rules.maxMonsters }; });
     return (r.n === r.max && r.max === 60) || JSON.stringify(r);
   }],
+  ["#10 怪物進場不顯示文字（Gary 2026-10-06 取消）", async ({ page }) => {
+    await page.evaluate(() => { G.S.packTimer = 0; G.step(0.05); });
+    const t = await page.locator("#feed").innerText();
+    return !/進場/.test(t) || t;
+  }],
   ["#10 畫面：戰場有畫布填滿戰鬥框，角色名牌在正中間", async ({ page }) => {
     const r = await page.evaluate(() => {
       const a = document.getElementById("battle").getBoundingClientRect(), c = document.getElementById("arenaCanvas").getBoundingClientRect();

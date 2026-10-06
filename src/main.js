@@ -24,8 +24,7 @@
 
     G.step = dt => {
       if (S.dead) return; // 倒下後整個停住（死亡與復活之後做）
-      if (G.spawnTick(S, dt, rules, DATA.monsters, hero.level).length)
-        G.feed(`${DATA.monsters[0].name}群 ×${S.lastPack.n} 從${G.DIR_NAMES[S.lastPack.dir]}方進場`);
+      G.spawnTick(S, dt, rules, DATA.monsters, hero.level); // 進場不顯示文字（Gary 2026-10-06）
       G.moveTick(S, dt);
       const killed = G.combatTick(S, dt, hero);
       S.castLog.push(...S.msgs.splice(0)); S.castLog.splice(0, S.castLog.length - 50); // 施放訊息留給 #19 戰鬥紀錄，戰場上只顯示擊倒、升級
