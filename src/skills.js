@@ -21,20 +21,24 @@ window.G = window.G || {};
     return +g.levels.rows[G.gemLevel(id, heroLevel) - 1][col];
   };
 
-  // Base Damage 欄的第 n 個 %（負數從後面數），例如碎骨 "100%, 100%, 100%, 200%"
-  const basePct = (id, n) => {
+  // 寶石現在這一級的那一列（照 poe2db；人物等級到了寶石就升級）
+  const gemRow = (id, hero) => gem(id).levels.rows[G.gemLevel(id, hero.level) - 1];
+
+  // 攻擊技能：Base Damage 欄的第 n 個 %（負數從後面數），例如碎骨第 1 級 "100%, 100%, 100%, 200%"；會隨寶石等級變高
+  const basePct = (id, n, hero) => {
     const g = gem(id), col = g.levels.columns.indexOf("Base Damage");
-    const list = g.levels.rows[0][col].split(",").map(x => parseFloat(x) / 100);
+    const list = gemRow(id, hero)[col].split(",").map(x => parseFloat(x) / 100);
     return list[n < 0 ? list.length + n : n];
   };
+  // 攻擊技能一下的傷害 ＝ 武器傷害（隨機一下）× 技能倍率（POE2）
+  const atk = (hero, pct) => pct * G.weaponRoll(hero);
 
-  // 法術：第 1 級傷害 ÷ 職業 Lv1 攻擊力 → 倍率範圍
-  const spellMult = (id, hero) => {
+  // 法術：直接用寶石這一級的傷害（例：混沌弩箭第 1 級 5～9），不看武器
+  const spellDmg = (id, hero) => {
     const g = gem(id), col = g.levels.columns.findIndex(c => /造成 \d+ 至 \d+/.test(c));
-    const [lo, hi] = g.levels.rows[0][col].split(",").map(Number);
-    return [lo / hero.cls.attack, hi / hero.cls.attack];
+    return gemRow(id, hero)[col].split(",").map(Number);
   };
-  G.spellMult = spellMult;
+  G.spellDmg = spellDmg;
 
   // 這招現在的參數：data/skillPlay.js 的設定，再套上插槽裡的輔助寶石（src/sockets.js）
   const eff = (S, id) => {
@@ -60,7 +64,7 @@ window.G = window.G || {};
     projectile(S, hero, id, p) {
       const t = nearest(S, p.rangeM), mo = p.mods;
       return t && { dur: gem(id).castTimeSec / mo.speedMult, fire(killed) {
-        const [lo, hi] = spellMult(id, hero), mult = mo.hitMult * mo.dmgMult;
+        const [lo, hi] = spellDmg(id, hero), mult = mo.hitMult * mo.dmgMult;
         // 主目標＋額外投射物打最近的其他怪；每一發可以再連鎖
         const firsts = S.monsters.filter(m => m.hp > 0 && G.dist(m, HERO) <= p.rangeM)
           .sort((a, b) => G.dist(a, HERO) - G.dist(b, HERO)).slice(0, 1 + mo.extraProj);
@@ -71,7 +75,7 @@ window.G = window.G || {};
             seen.add(cur);
             S.fx.push({ type: "bolt", x: cur.x, y: cur.y, fx: from.x, fy: from.y, age: 0, life: 0.25 });
             const at = { x: cur.x, y: cur.y };
-            G.hitMonster(S, cur, Math.round(rand(lo, hi) * hero.attack * mult), killed); hits++;
+            G.hitMonster(S, cur, Math.round(rand(lo, hi) * mult), killed); hits++;
             from = at;
             let next = null, nd = Infinity;
             for (const m of S.monsters) { const d = G.dist(m, at); if (m.hp > 0 && !seen.has(m) && d <= mo.chainRangeM && d < nd) { next = m; nd = d; } }
@@ -92,8 +96,8 @@ window.G = window.G || {};
       const c = { x: best.x, y: best.y };
       const mo = p.mods;
       return { dur: gem(id).castTimeSec / mo.speedMult, fire(killed) {
-        const hit = within(S, c, p.radiusM), [lo, hi] = spellMult(id, hero);
-        hitAll(S, hit, Math.round(rand(lo, hi) * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
+        const hit = within(S, c, p.radiusM), [lo, hi] = spellDmg(id, hero);
+        hitAll(S, hit, Math.round(rand(lo, hi) * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
         S.fx.push({ type: "circle", x: c.x, y: c.y, r: p.radiusM, age: 0, life: 0.35 });
         return `${gem(id).name} 擊中 ${hit.length} 隻`;
       } };
@@ -102,12 +106,12 @@ window.G = window.G || {};
       const t = G.pickTarget(S, hero);
       const mo = p.mods;
       return t && { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100) / mo.speedMult, fire(killed) {
-        G.hitMonster(S, t, Math.round(basePct(id, p.hitPctColumn) * hero.attack * mo.hitMult * mo.dmgMult), killed);
+        G.hitMonster(S, t, Math.round(atk(hero, basePct(id, p.hitPctColumn, hero)) * mo.hitMult * mo.dmgMult), killed);
         S.fx.push({ type: "bolt", x: t.x, y: t.y, age: 0, life: 0.2 });
         S.shockCount = (S.shockCount || 0) + 1;
         if (S.shockCount % p.shockEvery) return;
         const hit = within(S, t, p.shockRadiusM);
-        hitAll(S, hit, Math.round(basePct(id, p.shockPctColumn) * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
+        hitAll(S, hit, Math.round(atk(hero, basePct(id, p.shockPctColumn, hero)) * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
         S.fx.push({ type: "circle", x: t.x, y: t.y, r: p.shockRadiusM, age: 0, life: 0.35 });
         return `${gem(id).name} 震波 擊中 ${hit.length} 隻`;
       } };
@@ -117,7 +121,7 @@ window.G = window.G || {};
       const t = nearest(S, Math.min(reach, hero.attackRangeM + 1));
       if (!t) return null;
       const d = G.dist(t, HERO) || 1, ux = t.x / d, uy = t.y / d;
-      const centers = p.stages.map(s => ({ x: ux * s.distM, y: uy * s.distM, r: s.radiusM, pct: basePct(id, s.pctColumn) }));
+      const centers = p.stages.map(s => ({ x: ux * s.distM, y: uy * s.distM, r: s.radiusM, pct: basePct(id, s.pctColumn, hero) }));
       if (within(S, centers[0], centers[0].r).length < (p.minTargets || 1)) return null;
       const mo = p.mods;
       return { dur: (1 / hero.attacksPerSec + (p.extraTimeSec || 0)) / mo.speedMult, fire(killed) {
@@ -125,7 +129,7 @@ window.G = window.G || {};
         for (const c of centers) {
           const hit = within(S, c, c.r);
           total += hit.length;
-          hitAll(S, hit, Math.round(c.pct * hero.attack * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
+          hitAll(S, hit, Math.round(atk(hero, c.pct) * mo.hitMult * mo.dmgMult * mo.areaMult), killed);
           S.fx.push({ type: "circle", x: c.x, y: c.y, r: c.r, age: 0, life: 0.4 });
         }
         return `${gem(id).name} 兩段共擊中 ${total} 隻`;
@@ -133,10 +137,10 @@ window.G = window.G || {};
     }
   };
 
-  // 瘟疫：每秒傷害＝poe2db 第 1 級每秒傷害 ÷ 職業 Lv1 攻擊力 × 角色攻擊力
+  // 瘟疫：每秒傷害＝poe2db 寶石這一級的每秒傷害（第 1 級 2）
   const dotPerSec = (id, hero) => {
     const g = gem(id), col = g.levels.columns.findIndex(c => /每秒造成/.test(c));
-    return +g.levels.rows[0][col] / hero.cls.attack * hero.attack;
+    return +gemRow(id, hero)[col];
   };
   PLAN.dot = function (S, hero, id, p) {
     let best = null, bd = Infinity;
@@ -172,18 +176,19 @@ window.G = window.G || {};
     const mo = p.mods, k = mo.hitMult * mo.dmgMult * mo.areaMult;
     return { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100) / mo.speedMult, fire(killed) {
       const hit = within(S, c, p.radiusM);
-      hitAll(S, hit, Math.round(basePct(id, p.slamPctColumn) * hero.attack * k), killed);
+      hitAll(S, hit, Math.round(atk(hero, basePct(id, p.slamPctColumn, hero)) * k), killed);
       S.grounds.push({ x: c.x, y: c.y, r: p.radiusM, remain: p.delaySec, total: p.delaySec, name: gem(id).name,
-        dmg: Math.round(basePct(id, p.aftershockPctColumn) * hero.attack * k) });
+        dmg: Math.round(atk(hero, basePct(id, p.aftershockPctColumn, hero)) * k) });
       S.fx.push({ type: "circle", x: c.x, y: c.y, r: p.radiusM, age: 0, life: 0.35 });
       return `${gem(id).name} 擊中 ${hit.length} 隻，${+p.delaySec.toFixed(1)} 秒後餘震`;
     } };
   };
 
-  // 普通攻擊：打鎖定的目標（女巫、決鬥者都有；技能都放不了時用）
+  // 普通攻擊：用武器打鎖定的目標（技能都放不了時用）。法杖不能攻擊（POE2），女巫沒有普通攻擊
   const basicPlan = (S, hero) => {
+    if (!hero.attacksPerSec) return null;
     const t = G.pickTarget(S, hero);
-    return t && { id: "basic", cost: 0, dur: 1 / hero.attacksPerSec, fire(killed) { G.hitMonster(S, t, hero.attack, killed); } };
+    return t && { id: "basic", cost: 0, dur: 1 / hero.attacksPerSec, fire(killed) { G.hitMonster(S, t, Math.round(G.weaponRoll(hero)), killed); } };
   };
 
   G.heroSkills = hero => (DATA.skillPlay.order[hero.id] || []).filter(id => gem(id) && play(id));

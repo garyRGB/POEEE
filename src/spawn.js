@@ -4,13 +4,15 @@ window.G = window.G || {};
   const rand = ([a, b]) => a + Math.random() * (b - a);
   const randInt = ([a, b]) => a + Math.floor(Math.random() * (b - a + 1));
 
-  // 照等級算出一隻怪的數值：生命、攻擊 = 基礎值 × 等級
+  // 照等級算出一隻怪的數值：生命 ＝ 基礎值 ×（1 ＋ 成長 ×（等級 − 1））；沒寫成長就是跟等級成正比
+  const grow = (base, g, level) => base * (1 + (g ?? 1) * (level - 1));
   G.makeMonster = function (type, level) {
+    const life = grow(type.baseLife, type.lifeGrowth, level);
     return {
       id: type.id, name: type.name, level,
-      maxLife: type.baseLife * level,
-      hp: type.baseLife * level,
-      attack: type.baseAttack * level,
+      maxLife: life,
+      hp: life,
+      attack: grow(type.baseAttack, type.attackGrowth, level),
       attacksPerSec: type.attacksPerSec,
       atkTimer: 1 / type.attacksPerSec - (type.firstAttackSec ?? 1 / type.attacksPerSec), // 貼身後 firstAttackSec 秒打第一下
       moveSpeed: type.moveSpeed, meleeRangeM: type.meleeRangeM, radiusM: type.radiusM,

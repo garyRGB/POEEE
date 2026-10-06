@@ -10,7 +10,7 @@ G.showSelect = function (classes, onStart) {
     <button class="classCard" data-id="${c.id}">
       <b>${c.name}</b>
       <span class="hint">${c.desc}</span>
-      <span class="classStats num">生命 ${c.maxLife}　攻擊 ${c.attack}　攻速 ${c.attacksPerSec.toFixed(1)}/秒</span>
+      <span class="classStats num">${G.classCardStats(c)}</span>
     </button>`).join("");
 
   list.onclick = e => {
@@ -25,7 +25,9 @@ G.showSelect = function (classes, onStart) {
   startBtn.onclick = () => {
     if (!picked) return;
     screen.hidden = true;
-    onStart({ ...classes.base, ...picked, cls: { ...picked } }); // cls 留著 Lv1 數值，升級時用
+    const hero = { ...classes.base, ...picked, cls: { ...picked } }; // cls 留著職業原始資料
+    G.applyLevel(hero);
+    onStart(hero);
   };
   screen.hidden = false;
 };

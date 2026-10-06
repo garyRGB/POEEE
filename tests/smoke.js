@@ -33,9 +33,14 @@ async function open(browser, url, opts = {}) {
     if (!window.G || !G.S) return;
     window.spawnOnly = dt => G.spawnTick(G.S, dt, DATA.rules, DATA.monsters, G.hero.level);
     // 清場：沒有怪、不再生怪、技能先關掉（測普通攻擊用；#14 的檢查會自己打開技能）
-    window.clearField = () => { G.S.monsters = []; G.S.target = null; G.S.packTimer = 999; G.S.pending = null; for (const k in G.S.skillOn) G.S.skillOn[k] = false; };
+    window.clearField = () => { G.S.monsters = []; G.S.target = null; G.S.packTimer = 999; G.S.pending = null; for (const k in G.S.skillOn) G.S.skillOn[k] = false; fixWeapon(); };
     window.skillsOnly = ids => { for (const k in G.S.skillOn) G.S.skillOn[k] = ids.includes(k); G.S.pending = null; };
     // 在 (x, y) 公尺擺一隻怪；over 可以改這隻的基礎數值
+    // 武器傷害固定成平均值（不隨機），檢查才算得準；木製棍棒 6～10 → 每下 8
+    window.fixWeapon = () => { const h = G.hero; h.weapon = { ...h.weapon, phys: h.weapon.phys && [h.attack, h.attack], fire: undefined, cold: undefined, lightning: undefined, chaos: undefined }; if (!h.weapon.phys && h.attack) h.weapon.phys = [h.attack, h.attack]; };
+    // POE2 角色數值（data/character.js）：某職業某等級的生命、魔力
+    window.poeLife = (id, lv) => { const c = DATA.character; return c.lifeBase + c.lifePerLevel * (lv - 1) + c.lifePerStr * c.classes[id].str; };
+    window.poeMana = (id, lv) => { const c = DATA.character; return c.manaBase + c.manaPerLevel * (lv - 1) + c.manaPerInt * c.classes[id].int; };
     window.place = (x, y, over = {}) => { const m = G.makeMonster({ ...DATA.monsters[0], ...over }, G.hero.level); m.x = x; m.y = y; G.S.monsters.push(m); return m; };
   });
   return { page, errors };
@@ -130,7 +135,7 @@ const SELECT_CHECKS = [
   ["#2 有女巫、決鬥者兩張卡，各有介紹和數值", async ({ page }) => {
     const t = await page.locator("#classList").innerText();
     const n = await page.locator(".classCard").count();
-    return (n === 2 && ["女巫", "決鬥者", "生命", "攻擊", "攻速"].every(w => t.includes(w))) || `卡片 ${n} 張：${t}`;
+    return (n === 2 && ["女巫", "決鬥者", "生命", "魔力", "凋零法杖", "木製棍棒"].every(w => t.includes(w))) || `卡片 ${n} 張：${t}`;
   }],
   ["#2 還沒選時「開始」是灰的，按了不會進遊戲", async ({ page }) => {
     const dis = await page.locator("#startBtn").isDisabled();
@@ -145,18 +150,18 @@ const SELECT_CHECKS = [
   }],
   ["#2 選女巫開始：角色格寫女巫、屬性是女巫的數字", async ({ page }) => {
     await startAs(page, "witch");
-    const w = await page.evaluate(() => DATA.classes.list.find(c => c.id === "witch"));
+    const w = await page.evaluate(() => ({ life: G.hero.maxLife, want: 28 + 2 * DATA.character.classes.witch.int * 0 + 2 * DATA.character.classes.witch.str, weapon: G.hero.weapon.name }));
     const name = await page.locator("#heroTitle").innerText();
     const hp = await page.locator("#heroHpText").innerText();
     const stats = await page.locator("#stats").innerText();
-    return (name === "女巫" && hp === String(w.maxLife) && stats.includes(String(w.attack))) || `${name} ${hp}`;
+    return (name === "女巫" && hp === String(w.want) && w.life === w.want && stats.includes(w.weapon) && w.weapon === "凋零法杖") || `${name} ${hp} ${JSON.stringify(w)}`;
   }],
   ["#2 選決鬥者開始：角色格寫決鬥者、屬性是決鬥者的數字", async ({ page }) => {
     await startAs(page, "duelist");
-    const d = await page.evaluate(() => DATA.classes.list.find(c => c.id === "duelist"));
+    const d = await page.evaluate(() => ({ want: 28 + 2 * DATA.character.classes.duelist.str, weapon: G.hero.weapon.name }));
     const name = await page.locator("#heroTitle").innerText();
     const hp = await page.locator("#heroHpText").innerText();
-    return (name === "決鬥者" && hp === String(d.maxLife)) || `${name} ${hp}`;
+    return (name === "決鬥者" && hp === String(d.want) && d.weapon === "木製棍棒") || `${name} ${hp} ${JSON.stringify(d)}`;
   }],
 ];
 
@@ -230,24 +235,26 @@ const SPAWN_CHECKS = [
     });
     return (r.fill && r.cx < 3) || JSON.stringify(r);
   }],
-  ["#3 怪物強度跟等級成正比（Lv1 vs Lv5）", async ({ page }) => {
+  ["#3 怪物等級越高越強：Lv5 生命＝基礎 ×（1＋成長 × 4）（第 2 階段 #2 改，原本 × 等級）", async ({ page }) => {
     const r = await page.evaluate(() => {
       const t = DATA.monsters[0], a = G.makeMonster(t, 1), b = G.makeMonster(t, 5);
       return { a, b, t };
     });
-    return (r.a.maxLife === r.t.baseLife && r.b.maxLife === r.t.baseLife * 5 && r.b.attack === r.t.baseAttack * 5) || JSON.stringify(r);
+    const near = (x, y) => Math.abs(x - y) < 1e-9;
+    return (near(r.a.maxLife, r.t.baseLife) && near(r.b.maxLife, r.t.baseLife * (1 + r.t.lifeGrowth * 4)) && near(r.b.attack, r.t.baseAttack * (1 + r.t.attackGrowth * 4)) && r.b.maxLife > r.a.maxLife) || JSON.stringify(r);
   }],
-  ["#3 新手怪夠弱：Lv1 女巫、決鬥者都能 2～3 下打死", async ({ page }) => {
+  ["#3 新手怪夠弱：Lv1 決鬥者用武器、女巫用混沌弩箭，平均 2～4 下打死一隻", async ({ page }) => {
     const r = await page.evaluate(() => {
-      const m = G.makeMonster(DATA.monsters[0], 1);
-      return DATA.classes.list.map(c => [c.name, Math.ceil(m.maxLife / c.attack)]);
+      const m = G.makeMonster(DATA.monsters[0], 1), wr = G.weaponRange(G.findItem("One_Hand_Maces", "Wooden_Club"));
+      const [lo, hi] = G.spellDmg("Chaos_Bolt", { level: 1 });
+      return [["決鬥者", Math.ceil(m.maxLife / ((wr[0] + wr[1]) / 2))], ["女巫", Math.ceil(m.maxLife / ((lo + hi) / 2))]];
     });
-    return r.every(([, hits]) => hits >= 2 && hits <= 3) || r.map(x => x.join(" ") + " 下").join("、");
+    return r.every(([, hits]) => hits >= 2 && hits <= 4) || r.map(x => x.join(" ") + " 下").join("、");
   }],
   ["#10 新手怪夠弱：被 8 隻貼身圍住，Lv1 女巫、決鬥者都撐得過 20 秒", async ({ page }) => {
     const r = await page.evaluate(() => {
       const m = G.makeMonster(DATA.monsters[0], 1), dps = m.attack * m.attacksPerSec * 8;
-      return DATA.classes.list.map(c => [c.name, +(c.maxLife / dps).toFixed(1)]);
+      return DATA.classes.list.map(c => [c.name, +(poeLife(c.id, 1) / dps).toFixed(1)]);
     });
     return r.every(([, sec]) => sec >= 20) || r.map(x => x.join(" ") + " 秒").join("、");
   }],
@@ -387,14 +394,14 @@ const PROGRESS_CHECKS = [
     });
     return (r.exp === r.m.exp && r.gold >= r.m.gold[0] && r.gold <= r.m.gold[1]) || JSON.stringify(r);
   }],
-  ["#5 經驗夠了升 Lv2：生命、攻擊變 2 倍，血回滿，經驗扣掉", async ({ page }) => {
+  ["#5 經驗夠了升 Lv2：生命 +12（POE2），武器傷害不變，血回滿，經驗扣掉", async ({ page }) => {
     const r = await page.evaluate(() => {
-      const S = G.S, h = G.hero, need = G.expToNext(1, DATA.rules);
+      const S = G.S, h = G.hero, need = G.expToNext(1, DATA.rules), life0 = h.maxLife, atk0 = h.attack;
       S.hp = 1; S.exp = need - 1;
       G.onKill(S, h, G.makeMonster(DATA.monsters[0], 1), DATA.rules);
-      return { lv: h.level, life: h.maxLife, atk: h.attack, hp: S.hp, exp: S.exp, cls: h.cls, gain: DATA.monsters[0].baseExp };
+      return { lv: h.level, life: h.maxLife, life0, want: poeLife(h.id, 2), atk: h.attack, atk0, hp: S.hp, exp: S.exp, gain: DATA.monsters[0].baseExp };
     });
-    return (r.lv === 2 && r.life === r.cls.maxLife * 2 && r.atk === r.cls.attack * 2 && r.hp === r.life && r.exp === r.gain - 1) || JSON.stringify(r);
+    return (r.lv === 2 && r.life === r.want && r.life === r.life0 + 12 && r.atk === r.atk0 && r.hp === r.life && r.exp === r.gain - 1) || JSON.stringify(r);
   }],
   ["#5 升級後新出的怪是 Lv2", async ({ page }) => {
     const r = await page.evaluate(() => {
@@ -616,13 +623,13 @@ const MANA_CHECKS = [
     });
     return (Math.abs(r.after10 - r.want) < 0.01 && r.capped === r.max) || JSON.stringify(r);
   }],
-  ["#8 升級時魔力回滿，最大魔力、回魔 × 等級", async ({ page }) => {
+  ["#8 升級時魔力回滿；最大魔力 +4（POE2），每秒回魔＝最大魔力 4%", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, h = G.hero; S.mp = 0; S.exp = G.expToNext(1, DATA.rules);
       G.onKill(S, h, G.makeMonster(DATA.monsters[0], 1), DATA.rules);
-      return { lv: h.level, mp: S.mp, max: h.maxMana, regen: h.manaRegen, cls: h.cls };
+      return { lv: h.level, mp: S.mp, max: h.maxMana, want: poeMana(h.id, 2), regen: h.manaRegen };
     });
-    return (r.lv === 2 && r.max === r.cls.maxMana * 2 && r.regen === r.cls.manaRegen * 2 && r.mp === r.max) || JSON.stringify(r);
+    return (r.lv === 2 && r.max === r.want && Math.abs(r.regen - r.max * 0.04) < 0.01 && r.mp === r.max) || JSON.stringify(r);
   }],
   ["#8 角色屬性有魔力、回魔", async ({ page }) => {
     const t = await page.locator("#stats").innerText();
@@ -795,7 +802,7 @@ const SKILL_CHECKS = [
 
 // #15 持續傷害、延遲爆炸
 const EFFECT_CHECKS = [
-  ["#15 瘟疫（女巫）：對旁邊有怪的目標施放，扣 8 魔，每秒扣「2 ÷ 12 × 攻擊力」，5 秒後消失", async ({ page }) => {
+  ["#15 瘟疫（女巫）：對旁邊有怪的目標施放，扣 8 魔，每秒扣寶石這一級的傷害（第 1 級 2），5 秒後消失", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S, h = G.hero; clearField(); skillsOnly(["Contagion"]); h.maxMana = 1000; S.mp = 1000; h.manaRegen = 0;
       const a = place(2, 0, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 }), b = place(2.5, 0.5, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 });
@@ -806,7 +813,7 @@ const EFFECT_CHECKS = [
       for (let i = 0; i < 40; i++) G.step(0.05);     // 2 秒
       const lost2 = hp0 - target.hp;
       for (let i = 0; i < 80; i++) G.step(0.05);     // 再 4 秒，總共 6 秒 > 5 秒
-      return { got: !!got, mp, lost2, want2: 2 / h.cls.attack * h.attack * 2, gone: !target.contagion };
+      return { got: !!got, mp, lost2, want2: 2 * 2, gone: !target.contagion };
     });
     return (r.got && r.mp === 8 && Math.abs(r.lost2 - r.want2) <= 1 && r.gone) || JSON.stringify(r);
   }],
@@ -1155,12 +1162,12 @@ const SKILLRULE_CHECKS = [
     const name = `#19 測試版（?test=1）：開局 0 個復活道具、最大生命一半，升級後也一半；正常網址不變（${CLASS_NAME[cls]}）`;
     const t = await open(browser, url + "?test=1", { start: cls });
     const a = await t.page.evaluate(() => { const r = { rev: G.S.revives, life: G.hero.maxLife, hp: G.S.hp, lv1: G.hero.cls.maxLife, name: document.getElementById("heroName").textContent, shown: document.getElementById("revives").textContent };
-      G.onKill(G.S, G.hero, { name: "x", exp: 99999, gold: [0, 0] }, DATA.rules); r.up = G.hero.maxLife / (G.hero.cls.maxLife * G.hero.level); r.base = DATA.classes.list.find(c => c.id === G.hero.id).maxLife; return r; });
+      G.onKill(G.S, G.hero, { name: "x", exp: 99999, gold: [0, 0] }, DATA.rules); r.up = G.hero.maxLife / poeLife(G.hero.id, G.hero.level); r.base = poeLife(G.hero.id, 1); return r; });
     await t.page.close();
     const n = await open(browser, url, { start: cls });
     const b = await n.page.evaluate(() => ({ rev: G.S.revives, life: G.hero.maxLife, name: document.getElementById("heroName").textContent }));
     await n.page.close();
-    report(name, (a.rev === 0 && a.shown === "0" && a.life === a.base / 2 && a.hp === a.life && a.up === 1 && a.name.includes("測試版") && b.rev === 5 && b.life === a.base && !b.name.includes("測試版")) || JSON.stringify({ a, b }));
+    report(name, (a.rev === 0 && a.shown === "0" && a.life === a.base / 2 && a.hp === a.life && Math.abs(a.up - 0.5) < 0.01 && a.name.includes("測試版") && b.rev === 5 && b.life === a.base && !b.name.includes("測試版")) || JSON.stringify({ a, b }));
   }
 
   // 資料檔寫錯時，畫面要說錯在哪個檔案

@@ -31,10 +31,10 @@ window.G = window.G || {};
     if (G.drawArena) G.drawArena(S, hero, DATA.rules);
 
     $("stats").innerHTML = [
-      ["攻擊", hero.attack], ["生命", hero.maxLife],
-      ["攻速", hero.attacksPerSec.toFixed(2) + "/秒"], ["護甲", hero.armor],
-      ["每秒傷害", (hero.attack * hero.attacksPerSec).toFixed(1)], ["藥水回復", hero.potionHealPct + "%"],
-      ["魔力", hero.maxMana], ["回魔", hero.manaRegen + "/秒"]
+      ["武器", hero.weapon.name], ["生命", hero.maxLife],
+      ["武器傷害", hero.attacksPerSec ? G.weaponRange(hero.weapon).join("～") : "不能攻擊"], ["攻速", hero.attacksPerSec ? hero.attacksPerSec + "/秒" : "—"],
+      ["魔力", hero.maxMana], ["回魔", hero.manaRegen + "/秒"],
+      ["力量／敏捷／智慧", `${hero.str}／${hero.dex}／${hero.int}`], ["藥水回復", hero.potionHealPct + "%"]
     ].map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("");
   };
 
