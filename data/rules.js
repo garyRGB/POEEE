@@ -13,7 +13,7 @@ DATA.rules = {
   revive: {                  // 死亡與復活（#19，Claude 定、Gary 可改）
     hpPct: 100,              // 復活後生命回到幾 %
     mpPct: 100,              // 復活後魔力回到幾 %
-    clearMonsters: true      // 復活時清空場上的怪（不清的話常常一復活就又被圍死）
+    clearMonsters: false     // 復活時怪留在原位（Gary 2026-10-06 指定）；改 true 會清空場上的怪
   },
   testMode: {                // 網址加 ?test=1 的測試版（src/testMode.js），正常網址不受影響
     revives: 0,              // 開局復活道具

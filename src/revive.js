@@ -10,15 +10,14 @@ window.G = window.G || {};
     return [`撿到復活道具 ×${got}（共 ${S.revives}）`];
   };
 
-  // 復活：生命、魔力回到資料設定的 %，清掉場上的怪和地面效果，下一群怪重新倒數
+  // 復活：生命、魔力回到資料設定的 %；怪留在原位（資料設 clearMonsters 才清空場上、下一群重新倒數）
   G.revive = function (S, hero, rules) {
     const r = rules.revive;
     S.dead = false;
     S.hp = Math.max(1, Math.round(hero.maxLife * r.hpPct / 100));
     S.mp = Math.round(hero.maxMana * r.mpPct / 100);
-    if (r.clearMonsters) { S.monsters = []; S.target = null; S.grounds = []; S.fx = []; }
+    if (r.clearMonsters) { S.monsters = []; S.target = null; S.grounds = []; S.fx = []; S.packTimer = G.firstPackTimer(rules); }
     S.pending = null; S.heroTimer = 0;
-    S.packTimer = G.firstPackTimer(rules);
   };
 
   // 剛倒下時呼叫：有道具就自動復活並扣 1；沒有就停在死亡畫面（S.dead 保持 true，遊戲停住）

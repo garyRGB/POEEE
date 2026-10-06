@@ -490,16 +490,17 @@ const POTION_CHECKS = [
 
 // #19 死亡與復活
 const REVIVE_CHECKS = [
-  ["#19 有復活道具時倒下：自動復活、扣 1 個，生命魔力回滿，場上的怪清空", async ({ page }) => {
+  ["#19 有復活道具時倒下：自動復活、扣 1 個，生命魔力回滿，怪留在原位", async ({ page }) => {
     const r = await page.evaluate(() => {
       const S = G.S; clearField(); S.revives = 2; S.mp = 0;
-      for (let k = 0; k < 8; k++) place(Math.cos(k) * 0.8, Math.sin(k) * 0.8, { baseLife: 100000, baseAttack: 500 });
-      let steps = 0; while (S.revives === 2 && steps < 300) { G.step(0.1); steps++; }
-      return { revives: S.revives, dead: S.dead, hp: S.hp, max: G.hero.maxLife, mp: S.mp, maxMp: G.hero.maxMana, mons: S.monsters.length, timer: S.packTimer,
+      for (let k = 0; k < 8; k++) place(Math.cos(k) * 0.8, Math.sin(k) * 0.8, { baseLife: 100000, baseAttack: 500, moveSpeed: 0 });
+      let steps = 0, pos0 = null; const pos = () => S.monsters.map(m => m.x.toFixed(3) + "," + m.y.toFixed(3) + "," + Math.round(m.hp)).join(";");
+      while (S.revives === 2 && steps < 300) { pos0 = pos(); G.step(0.1); steps++; }
+      return { revives: S.revives, dead: S.dead, hp: S.hp, max: G.hero.maxLife, mp: S.mp, maxMp: G.hero.maxMana, mons: S.monsters.length, same: pos() === pos0,
         shown: !document.getElementById("deathScreen").hidden, txt: document.getElementById("revives").textContent };
     });
     const feed = await page.locator("#feed").innerText();
-    return (r.revives === 1 && !r.dead && r.hp === r.max && r.mp === r.maxMp && r.mons === 0 && r.timer <= 3 && !r.shown && r.txt === "1" && feed.includes("自動用掉 1 個復活道具"))
+    return (r.revives === 1 && !r.dead && r.hp === r.max && r.mp === r.maxMp && r.mons === 8 && r.same && !r.shown && r.txt === "1" && feed.includes("自動用掉 1 個復活道具"))
       || JSON.stringify(r) + feed;
   }],
   ["#19 沒有復活道具時倒下：顯示死亡畫面，遊戲停住；按「復活」免費回到戰鬥", async ({ page }) => {
@@ -514,8 +515,8 @@ const REVIVE_CHECKS = [
     if (!(r.dead && r.frozen && r.shown)) return "倒下時：" + JSON.stringify(r);
     await page.click("#reviveBtn");
     const a = await page.evaluate(() => ({ dead: G.S.dead, hp: G.S.hp, max: G.hero.maxLife, revives: G.S.revives, mons: G.S.monsters.length, shown: !document.getElementById("deathScreen").hidden }));
-    const b = await page.evaluate(() => { for (let i = 0; i < 60; i++) G.step(0.1); return G.S.monsters.length; }); // 6 秒內新的一群會來
-    return (!a.dead && a.hp === a.max && a.revives === 0 && a.mons === 0 && !a.shown && b > 0) || "按復活後：" + JSON.stringify(a) + " 6 秒後場上 " + b;
+    const b = await page.evaluate(() => { for (let i = 0; i < 30 && G.S.hp === G.hero.maxLife; i++) G.step(0.1); return G.S.hp < G.hero.maxLife; }); // 戰鬥繼續：原位的怪 3 秒內又打到角色
+    return (!a.dead && a.hp === a.max && a.revives === 0 && a.mons === 8 && !a.shown && b) || "按復活後：" + JSON.stringify(a) + " 戰鬥有繼續 " + b;
   }],
   ["#19 怪物會掉復活道具（機率寫在 data/monsters.js），數量顯示會更新", async ({ page }) => {
     const r = await page.evaluate(() => {
