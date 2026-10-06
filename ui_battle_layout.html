@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-10-06 Gary 認可的戰場版面示意（Artifact：https://claude.ai/artifact/RTmgZHHaNkzr7pFyqueetF） -->
+<title>POEEE 戰場版面</title>
+<style>
+/* 版面：直式手機一整面戰場，資源列在上、按鈕列貼在戰場下緣；往下捲才是選單、屬性、裝備 */
+:root{
+  --bg:#D8D4CB; --panel:#E6E2DA; --field:#CFCABF; --line:#9C9384; --ink:#211C17; --soft:#645A4E;
+  --gold:#8C6A12; --goldBg:#C9A548; --life:#A8352C; --mana:#2F55B5; --mon:#5B4A3A; --tag:#B23A2E;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16181B; --panel:#1F2226; --field:#1A1C1F; --line:#55575B; --ink:#E7E3DA; --soft:#9A968D;
+  --gold:#E2C26A; --goldBg:#B8963E; --life:#C23A30; --mana:#3A64D8; --mon:#B9A58C; --tag:#E0725F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16181B; --panel:#1F2226; --field:#1A1C1F; --line:#55575B; --ink:#E7E3DA; --soft:#9A968D;
+  --gold:#E2C26A; --goldBg:#B8963E; --life:#C23A30; --mana:#3A64D8; --mon:#B9A58C; --tag:#E0725F; color-scheme:dark}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:15px;line-height:1.45}
+*{box-sizing:border-box}
+.screen{height:100%;max-width:460px;margin:0 auto;padding-inline:8px;display:flex;flex-direction:column}
+.tag{position:absolute;z-index:3;background:var(--tag);color:#fff;font:700 12px/1 system-ui,sans-serif;padding:4px 6px;border-radius:3px;white-space:nowrap}
+
+/* ① 資源列 */
+.top{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.top .name{font-weight:700;padding-right:10px;border-right:1px solid var(--line)}
+.top .res{display:flex;justify-content:space-around;font-size:14px;font-variant-numeric:tabular-nums}
+.rect{border:1px solid var(--line);border-radius:4px;padding:3px 10px;font-size:14px;background:none;color:var(--ink);font-family:inherit}
+.top .tag{left:2px;top:calc(100% + 2px)}
+
+/* ② 戰場：吃掉剩下的整個螢幕高度 */
+.field{position:relative;flex:1;min-height:0;margin-top:8px;border:1px solid var(--line);border-radius:3px;background:var(--field);overflow:hidden}
+.field::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:44px 44px;opacity:.18}
+.field>.tag{left:8px;top:30px}
+
+/* ④ 角色：在場中間，自己打、不用搖桿 */
+.hero{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:3px;z-index:2}
+.hero .body{width:28px;height:28px;border-radius:50%;background:var(--panel);border:2px solid var(--gold)}
+.hero .nm{font-size:12px;font-weight:700}
+.bar{width:64px;height:5px;background:var(--panel);border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.hp i{width:72%;background:var(--life)} .mp i{width:55%;background:var(--mana)}
+.hero .tag{left:44px;top:-4px}
+
+/* ③ 怪物群：從框外進場 */
+.pack{position:absolute;width:56px;height:40px;z-index:1}
+.pack i{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--mon)}
+.pack i:nth-child(1){left:0;top:4px}.pack i:nth-child(2){left:16px;top:0}.pack i:nth-child(3){left:32px;top:6px}
+.pack i:nth-child(4){left:8px;top:20px}.pack i:nth-child(5){left:26px;top:22px}.pack i:nth-child(6){left:42px;top:24px}
+.p1{animation:in1 7s linear infinite}.p2{animation:in2 8s linear infinite -2s}.p3{animation:in3 6.5s linear infinite -4s}
+.p4{animation:in4 9s linear infinite -1s}.p5{animation:in5 7.5s linear infinite -5s}.p6{animation:in6 8.5s linear infinite -3s}
+@keyframes in1{from{left:-60px;top:-50px}to{left:30%;top:34%}}      /* 左上 */
+@keyframes in2{from{left:100%;top:46%}to{left:58%;top:46%}}          /* 右 */
+@keyframes in3{from{left:100%;top:100%}to{left:56%;top:58%}}         /* 右下 */
+@keyframes in4{from{left:44%;top:-50px}to{left:44%;top:30%}}         /* 上 */
+@keyframes in5{from{left:-60px;top:100%}to{left:28%;top:58%}}        /* 左下 */
+@keyframes in6{from{left:-60px;top:48%}to{left:26%;top:48%}}         /* 左 */
+@media (prefers-reduced-motion:reduce){.pack{animation:none}.p1{left:8%;top:14%}.p2{left:76%;top:46%}.p3{left:70%;top:72%}.p4{left:44%;top:8%}.p5{left:10%;top:74%}.p6{left:6%;top:46%}}
+.spawn{position:absolute;z-index:3;font:700 18px/1 system-ui,sans-serif;color:var(--tag)}
+.d-l{left:4px;top:45%}.d-lt{left:4px;top:40px}.d-t{left:50%;top:6px;transform:translateX(-50%)}.d-rt{right:4px;top:6px}
+.d-r{right:4px;top:45%}.d-rb{right:4px;bottom:58px}.d-b{left:50%;bottom:58px;transform:translateX(-50%)}.d-lb{left:4px;bottom:58px}
+.d-note{left:50%;top:30px;transform:translateX(-50%);font-size:12px;white-space:nowrap;background:var(--tag);color:#fff;padding:4px 6px;border-radius:3px}
+
+/* 戰利品文字 */
+.feed{position:absolute;left:0;right:0;bottom:56px;text-align:center;font-size:13px;color:var(--soft);z-index:2}
+
+/* ⑤ 按鈕列：貼在戰場下緣 */
+.ctrl{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--panel) 88%,transparent);border-top:1px solid var(--line);z-index:2}
+.items{display:flex;gap:12px;font-size:14px;font-variant-numeric:tabular-nums}
+.btn{font-family:inherit;font-weight:700;border-radius:3px;padding:7px 18px;background:var(--goldBg);border:1px solid var(--gold);color:#2a1e05}
+.ctrl .tag{left:10px;top:-24px}
+
+.nav{position:relative;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))}
+.nav .round{width:100%;aspect-ratio:1;max-width:52px;justify-self:center;font-size:13px;border-width:1.5px}
+.nav .tag{left:0;top:-14px}
+/* 舊的往下捲區已取消 */
+.below{max-width:460px;margin:0 auto;padding:16px 8px 32px;position:relative}
+.below .tag{position:static;display:inline-block;margin-bottom:8px}
+.rounds{display:flex;gap:10px;flex-wrap:wrap}
+.round{border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:700;background:var(--panel)}
+.box{margin-top:12px;border:1px dashed var(--line);border-radius:3px;padding:14px;color:var(--soft);font-size:14px}
+.note{max-width:460px;margin:12px auto 24px;padding-inline:16px;font-family:system-ui,sans-serif;font-size:13px;color:var(--soft);line-height:1.6}
+</style>
+
+</head>
+<body style="margin:0">
+<div class="screen">
+  <div class="top">
+    <span class="name">女巫</span>
+    <span class="res"><span>經驗:15/50</span><span>金幣:11</span><span>鑽石:0</span></span>
+    <button class="rect" type="button">設置</button>
+    <span class="tag">① 資源列：經驗、金幣、鑽石</span>
+  </div>
+
+  <div class="field">
+    <span class="tag">② 戰場（往上縮，讓 ⑥ 不用往下捲就看得到）</span>
+    <span class="spawn d-l">←</span><span class="spawn d-lt">↖</span><span class="spawn d-t">↑</span><span class="spawn d-rt">↗</span>
+    <span class="spawn d-r">→</span><span class="spawn d-rb">↘</span><span class="spawn d-b">↓</span><span class="spawn d-lb">↙</span>
+    <span class="spawn d-note">③ 怪物群從 8 個方向隨機進場</span>
+
+    <div class="pack p1"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pack p2"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pack p3"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pack p4"><i></i><i></i><i></i><i></i></div>
+    <div class="pack p5"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pack p6"><i></i><i></i><i></i><i></i></div>
+
+    <div class="hero">
+      <span class="tag">④ 角色（自動打，不用搖桿）</span>
+      <span class="body"></span>
+      <span class="nm">女巫 Lv1</span>
+      <span class="bar hp"><i></i></span>
+      <span class="bar mp"><i></i></span>
+    </div>
+
+    <div class="feed">擊倒 腐屍，經驗 +5、金幣 +3</div>
+
+    <div class="ctrl">
+      <span class="tag">⑤ 原本戰鬥框下方的按鈕，移到這裡</span>
+      <div class="items"><span>藥水 <b>5</b></span><span>復活 <b>5</b></span></div>
+      <button class="btn" type="button">輿圖</button>
+    </div>
+  </div>
+
+  <div class="nav">
+    <span class="tag">⑥ 一排 8 個按鈕，不用往下捲就看得到</span>
+    <span class="round">背包</span><span class="round">天賦</span><span class="round">自動</span><span class="round">商店</span>
+    <span class="round">角色</span><span class="round">裝備</span><span class="round">戰鬥</span><span class="round">任務</span>
+  </div>
+</div>
+<p class="note">這是版面示意，不是遊戲本身。整頁就是一個手機畫面，不用往下捲。<br>「角色」打開角色屬性、「裝備」打開 10 格裝備、「戰鬥」打開戰鬥紀錄，都是點了才跳出來的頁面。</p>
+
+</body>
+</html>
