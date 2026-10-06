@@ -7,10 +7,28 @@ window.DATA = window.DATA || {};
 DATA.skillPlay = {
   // 出手順序：越前面越優先；條件不符（魔力不夠、怪不夠多）就往下找；都不行就普通攻擊
   order: {
-    witch: ["Bone_Blast", "Chaos_Bolt"],
-    duelist: ["Rolling_Slam", "Boneshatter"]
+    witch: ["Contagion", "Bone_Blast", "Chaos_Bolt"],
+    duelist: ["Earthquake", "Rolling_Slam", "Boneshatter"]
   },
   skills: {
+    Contagion: {
+      kind: "dot",              // 對一隻沒中瘟疫的怪掛持續傷害
+      rangeM: 4,                // Claude 定：跟女巫其他技能一樣
+      durationSec: 5,           // poe2db：減益效果持續時間 5 秒
+      spreadRadiusM: 1.7,       // poe2db：擴散範圍 1.7 公尺（中招的怪死掉時傳給附近的怪，並刷新持續時間）
+      spreadMorePct: 100,       // poe2db：每次擴散造成 100% 更多傷害
+      spreadMaxMorePct: 300,    // poe2db：最高 300%
+      minNearby: 1              // Claude 定：目標旁邊 1.7 公尺內至少還有 1 隻怪才放（不然擴散不到，用別招）
+    },
+    Earthquake: {
+      kind: "quake",            // 打一片範圍，留下碎裂地面，幾秒後爆發餘震
+      slamPctColumn: 0,         // Base Damage 第 1 個 %：衝擊（40%）
+      aftershockPctColumn: -1,  // Base Damage 最後一個 %：餘震（184%）
+      radiusM: 1.8,             // poe2db：衝擊範圍、碎裂地面範圍 1.8 公尺
+      delaySec: 4,              // poe2db：碎裂地面持續 4 秒後爆發
+      maxGrounds: 2,            // poe2db：碎裂地面上限 2 片（不能疊在現有地面上）
+      minTargets: 2             // Claude 定：範圍內至少 2 隻才放
+    },
     Chaos_Bolt: {
       kind: "projectile",       // 射最近的一隻
       rangeM: 4                 // Claude 定：跟女巫普攻範圍一樣

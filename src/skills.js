@@ -103,6 +103,51 @@ window.G = window.G || {};
     }
   };
 
+  // 瘟疫：每秒傷害＝poe2db 第 1 級每秒傷害 ÷ 職業 Lv1 攻擊力 × 角色攻擊力
+  const dotPerSec = (id, hero) => {
+    const g = gem(id), col = g.levels.columns.findIndex(c => /每秒造成/.test(c));
+    return +g.levels.rows[0][col] / hero.cls.attack * hero.attack;
+  };
+  PLAN.dot = function (S, hero, id, p) {
+    let best = null, bd = Infinity;
+    for (const m of S.monsters) {
+      const d = G.dist(m, HERO);
+      if (m.hp <= 0 || m.contagion || d > p.rangeM) continue;
+      if (within(S, m, p.spreadRadiusM).length - 1 < (p.minNearby || 0)) continue;
+      if (d < bd) { best = m; bd = d; }
+    }
+    return best && { dur: gem(id).castTimeSec, fire() {
+      G.applyContagion(best, dotPerSec(id, hero), p.durationSec, 0);
+      S.fx.push({ type: "ring", x: best.x, y: best.y, r: 0.5, age: 0, life: 0.3 });
+      return `${gem(id).name} 感染 1 隻`;
+    } };
+  };
+
+  // 震地：衝擊打一片，留下碎裂地面，delaySec 秒後餘震；地面有上限、不能疊在現有地面上
+  PLAN.quake = function (S, hero, id, p) {
+    if (S.grounds.length >= p.maxGrounds) return null;
+    // 由近到遠找第一個「沒疊到現有地面、範圍內怪夠多」的位置
+    const cand = S.monsters.filter(m => m.hp > 0 && G.dist(m, HERO) <= hero.attackRangeM + p.radiusM)
+      .sort((a, b) => G.dist(a, HERO) - G.dist(b, HERO));
+    let c = null;
+    for (const t of cand) {
+      const d = G.dist(t, HERO) || 1, reach = Math.min(d, hero.attackRangeM);
+      const at = { x: t.x / d * reach, y: t.y / d * reach };
+      if (S.grounds.some(g => G.dist(g, at) < g.r)) continue;
+      if (within(S, at, p.radiusM).length < (p.minTargets || 1)) continue;
+      c = at; break;
+    }
+    if (!c) return null;
+    return { dur: 1 / (hero.attacksPerSec * (gem(id).attackSpeedPct || 100) / 100), fire(killed) {
+      const hit = within(S, c, p.radiusM);
+      hitAll(S, hit, Math.round(basePct(id, p.slamPctColumn) * hero.attack), killed);
+      S.grounds.push({ x: c.x, y: c.y, r: p.radiusM, remain: p.delaySec, total: p.delaySec, name: gem(id).name,
+        dmg: Math.round(basePct(id, p.aftershockPctColumn) * hero.attack) });
+      S.fx.push({ type: "circle", x: c.x, y: c.y, r: p.radiusM, age: 0, life: 0.35 });
+      return `${gem(id).name} 擊中 ${hit.length} 隻，${p.delaySec} 秒後餘震`;
+    } };
+  };
+
   // 普通攻擊：打鎖定的目標（女巫、決鬥者都有；技能都放不了時用）
   const basicPlan = (S, hero) => {
     const t = G.pickTarget(S, hero);

@@ -25,6 +25,7 @@ window.G = window.G || {};
     m.hp -= dmg;
     if (m.hp <= 0) {
       m.hp = 0; killed.push(m);
+      if (G.onMonsterDeath) G.onMonsterDeath(S, m); // 瘟疫擴散（src/effects.js）
       const i = S.monsters.indexOf(m);
       if (i >= 0) S.monsters.splice(i, 1);
       if (S.target === m) S.target = null;
@@ -38,6 +39,7 @@ window.G = window.G || {};
 
     // 角色出手：放技能或普通攻擊（src/skills.js）
     G.heroActTick(S, dt, hero, killed);
+    G.effectsTick(S, dt, killed); // 瘟疫扣血、震地餘震
 
     // 怪物出手：貼身才計時
     for (const m of S.monsters) {

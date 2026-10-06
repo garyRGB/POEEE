@@ -9,6 +9,7 @@ G.createState = function (hero, rules) {
     pending: null,  // 下一次出手要放的招（src/skills.js）
     skillOn: Object.fromEntries(G.heroSkills(hero).map(id => [id, true])), // 每招開關（#17 做成可以在「自動」頁調）
     fx: [],         // 技能特效（畫面用）
+    grounds: [],    // 地上的碎裂地面（震地），倒數到 0 爆發餘震
     msgs: [],       // 這一步的施放訊息
     castLog: [],    // 最近 50 筆施放訊息（#19 戰鬥紀錄用）
     exp: 0, gold: 0, diamond: 0, // 鑽石：買稀有通貨用（第 2 階段才有來源）

@@ -45,16 +45,29 @@ window.G = window.G || {};
       ctx.fillStyle = css("--mon");
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
       if (m === S.target) { ctx.strokeStyle = css("--gold"); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; }
+      if (m.contagion) { ctx.strokeStyle = css("--chaos"); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, r + 3, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
       const bw = r * 2.4, bx = p.x - bw / 2, by = p.y - r - 6;
       ctx.fillStyle = css("--bg"); ctx.fillRect(bx, by, bw, 3);
       ctx.fillStyle = css("--life"); ctx.fillRect(bx, by, bw * Math.max(0, m.hp / m.maxLife), 3);
+    }
+
+    // 碎裂地面（震地）：虛線圈，越接近爆發越亮
+    for (const g of S.grounds || []) {
+      const p = toPx(g);
+      ctx.strokeStyle = css("--gold"); ctx.globalAlpha = 0.35 + 0.55 * (1 - g.remain / g.total); ctx.setLineDash([3, 3]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, g.r * pxPerM, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
     }
 
     // 技能特效：投射物命中閃一下、範圍技能畫圈
     for (const f of S.fx || []) {
       const p = toPx(f), a = 1 - f.age / f.life;
       ctx.globalAlpha = Math.max(0, a);
-      if (f.type === "circle") {
+      if (f.type === "ring") {
+        ctx.strokeStyle = css("--chaos"); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, f.r * pxPerM, 0, Math.PI * 2); ctx.stroke();
+      } else if (f.type === "circle") {
+
         ctx.strokeStyle = css("--mana"); ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(p.x, p.y, f.r * pxPerM, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = css("--mana"); ctx.globalAlpha = Math.max(0, a * 0.18); ctx.fill();

@@ -590,11 +590,11 @@ const SKILLDATA_CHECKS = [
 
 // #14 技能施放
 const SKILL_CHECKS = [
-  ["#14 女巫帶混沌弩箭、骨之爆破；決鬥者帶翻騰重擊、碎骨；技能列顯示名字和耗魔", async ({ page }) => {
+  ["#14/#15 女巫帶瘟疫、骨之爆破、混沌弩箭；決鬥者帶震地、翻騰重擊、碎骨；技能列顯示名字和耗魔", async ({ page }) => {
     const r = await page.evaluate(() => ({ ids: G.heroSkills(G.hero), bar: document.getElementById("skillbar").innerText.replace(/\s+/g, " ") }));
-    const want = { 女巫: ["混沌弩箭", "骨之爆破"], 決鬥者: ["翻騰重擊", "碎骨"] };
+    const want = { 女巫: ["瘟疫", "骨之爆破", "混沌弩箭"], 決鬥者: ["震地", "翻騰重擊", "碎骨"] };
     const cls = await page.evaluate(() => G.hero.name);
-    return (r.ids.length === 2 && want[cls].every(n => r.bar.includes(n)) && /魔/.test(r.bar)) || JSON.stringify(r);
+    return (r.ids.length === 3 && want[cls].every(n => r.bar.includes(n)) && /魔/.test(r.bar)) || JSON.stringify(r);
   }],
   ["#14 寶石等級照 poe2db「需要等級」：人物 Lv1 → 寶石 1 級，Lv3 → 2 級，Lv36 → 10 級", async ({ page }) => {
     const r = await page.evaluate(() => { const id = G.heroSkills(G.hero)[0]; return [1, 3, 36].map(l => G.gemLevel(id, l)); });
@@ -685,6 +685,85 @@ const SKILL_CHECKS = [
   }],
 ];
 
+// #15 持續傷害、延遲爆炸
+const EFFECT_CHECKS = [
+  ["#15 瘟疫（女巫）：對旁邊有怪的目標施放，扣 8 魔，每秒扣「2 ÷ 12 × 攻擊力」，5 秒後消失", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Contagion"]); h.maxMana = 1000; S.mp = 1000; h.manaRegen = 0;
+      const a = place(2, 0, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 }), b = place(2.5, 0.5, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 });
+      G.step(1.001);                                 // 施放 1 秒
+      const got = a.contagion || b.contagion, mp = 1000 - S.mp;
+      skillsOnly([]); h.attacksPerSec = 1e-6;          // 不再放、也不普攻，只看持續傷害
+      const target = a.contagion ? a : b, hp0 = target.hp;
+      for (let i = 0; i < 40; i++) G.step(0.05);     // 2 秒
+      const lost2 = hp0 - target.hp;
+      for (let i = 0; i < 80; i++) G.step(0.05);     // 再 4 秒，總共 6 秒 > 5 秒
+      return { got: !!got, mp, lost2, want2: 2 / h.cls.attack * h.attack * 2, gone: !target.contagion };
+    });
+    return (r.got && r.mp === 8 && Math.abs(r.lost2 - r.want2) <= 1 && r.gone) || JSON.stringify(r);
+  }],
+  ["#15 瘟疫（女巫）：單獨一隻（旁邊沒怪）不放；已經中瘟疫的不重複放", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; clearField(); skillsOnly(["Contagion"]); S.mp = 1000; G.hero.maxMana = 1000;
+      const lone = place(2, 0, { baseLife: 1000, moveSpeed: 0 });
+      for (let i = 0; i < 30; i++) G.step(0.05);
+      const loneHit = !!lone.contagion;
+      clearField(); skillsOnly(["Contagion"]);
+      const a = place(2, 0, { baseLife: 1000, moveSpeed: 0 }), b = place(2.4, 0, { baseLife: 1000, moveSpeed: 0 });
+      G.applyContagion(a, 1, 5, 0); G.applyContagion(b, 1, 5, 0);
+      const mp0 = S.mp; for (let i = 0; i < 30; i++) G.step(0.05);
+      return { loneHit, spent: mp0 - S.mp };
+    });
+    return (!r.loneHit && r.spent <= 0) || JSON.stringify(r);
+  }],
+  ["#15 瘟疫擴散：中招的怪死掉，1.7 公尺內的怪被傳染、傷害變 2 倍；外面的不會", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S; clearField();
+      const dying = place(3, 0, { baseLife: 1, moveSpeed: 0 }), near = place(4, 0, { baseLife: 1000, moveSpeed: 0 }), far = place(3, 3, { baseLife: 1000, moveSpeed: 0 });
+      G.applyContagion(dying, 10, 5, 0);
+      G.step(0.2);
+      return { near: near.contagion && near.contagion.dps, spreads: near.contagion && near.contagion.spreads, far: !!far.contagion };
+    });
+    return (r.near === 20 && r.spreads === 1 && !r.far) || JSON.stringify(r);
+  }],
+  ["#15 瘟疫擴散最多 300% 更多傷害（傳很多次也不會超過 4 倍）", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      clearField();
+      const dying = place(3, 0, { baseLife: 1, moveSpeed: 0 }), near = place(3.5, 0, { baseLife: 1000, moveSpeed: 0 });
+      G.applyContagion(dying, 10 * 4, 5, 6);           // 已經擴散 6 次：基礎 10，已是 ×4
+      G.step(0.2);
+      return near.contagion && near.contagion.dps;
+    });
+    return r === 40 || `擴散後每秒 ${r}`;
+  }],
+  ["#15 震地（決鬥者）：衝擊 40% 打 1.8 公尺內，扣 8 魔，留下碎裂地面，4 秒後餘震 184%", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Earthquake"]); h.maxMana = 1000; S.mp = 1000; h.manaRegen = 0;
+      const a = place(1, 0, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 }), b = place(1.5, 0.8, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 });
+      const gap = 1 / (h.attacksPerSec * 0.75);
+      G.step(gap + 0.001);
+      const slam = 100000 - a.hp, mp = 1000 - S.mp, grounds = S.grounds.length;
+      skillsOnly([]); h.attacksPerSec = 1e-6;          // 不再放、也不普攻，只看餘震
+      for (let i = 0; i < 81; i++) G.step(0.05);     // 4.05 秒
+      return { slam, mp, grounds, total: 100000 - a.hp, b: 100000 - b.hp, atk: h.attack, left: S.grounds.length };
+    });
+    const s = Math.round(0.4 * r.atk), af = Math.round(1.84 * r.atk);
+    return (r.slam === s && r.mp === 8 && r.grounds === 1 && r.total === s + af && r.b === s + af && r.left === 0) || JSON.stringify(r);
+  }],
+  ["#15 震地（決鬥者）：碎裂地面最多 2 片，不會疊在現有地面上", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, h = G.hero; clearField(); skillsOnly(["Earthquake"]); h.maxMana = 1000; S.mp = 1000;
+      for (const [x, y] of [[1, 0], [1.3, 0.3], [-1, 0], [-1.3, 0.3], [0, 1.2], [0.3, 1.4]]) place(x, y, { baseLife: 100000, moveSpeed: 0, baseAttack: 0 });
+      for (let i = 0; i < 60; i++) G.step(0.05);     // 3 秒內只能放到上限
+      const n = S.grounds.length;
+      let overlap = false;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (G.dist(S.grounds[i], S.grounds[j]) < S.grounds[i].r) overlap = true;
+      return { n, overlap };
+    });
+    return (r.n === 2 && !r.overlap) || JSON.stringify(r);
+  }],
+];
+
 (async () => {
   const port = 8765, srv = await serve(port), url = `http://localhost:${port}/`;
   const browser = await chromium.launch();
@@ -769,6 +848,14 @@ const SKILL_CHECKS = [
   for (const [title, fn] of SKILL_CHECKS) for (const cls of ["witch", "duelist"]) {
     const c = await open(browser, url, { start: cls });
     const name = title.includes(BOTH) ? title.replace(BOTH, CLASS_NAME[cls]) : `${title}（${CLASS_NAME[cls]}）`;
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [name, fn] of EFFECT_CHECKS) {
+    const cls = name.includes("決鬥者") ? "duelist" : "witch";
+    const c = await open(browser, url, { start: cls });
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
     await c.page.close();

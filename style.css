@@ -149,3 +149,8 @@ html,body{height:100%}
 .skill.lit small{color:#2a1e05}
 .skill.poor{opacity:.5}
 .skill.off{opacity:.3;text-decoration:line-through}
+
+/* 瘟疫（混沌）紫色（#15） */
+:root{--chaos:#7A3FA8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--chaos:#B57BE0}}
+:root[data-theme="dark"]{--chaos:#B57BE0}
