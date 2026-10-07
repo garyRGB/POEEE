@@ -643,6 +643,59 @@ const LOOT_CHECKS = [
     const count = await page.locator("#bagCount").innerText();
     return (feed.includes("掉落：稀有") && shown && item.includes("物品等級") && count === "1" && color && color !== "rgb(0, 0, 0)") || JSON.stringify({ feed, shown, item, count, color });
   }],
+  ["第 2 階段 #4 詞綴數量照 POE：普通 0、魔法 1～2（前後綴各最多 1）、稀有 3～6（各最多 3）；同一族不重複", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const bad = [], seen = { magic: new Set(), rare: new Set() };
+      for (const rar of ["normal", "magic", "rare"]) for (let i = 0; i < 400; i++) {
+        const it = G.makeItem(G.hero.id, 80, rar), a = it.affixes;
+        const p = a.filter(x => x.kind === "prefix").length, s = a.filter(x => x.kind === "suffix").length;
+        const fam = new Set(a.map(x => x.family)).size;
+        const [lo, hi] = DATA.loot.affixCount[rar];
+        if (it.rarity !== rar || a.length < lo || a.length > hi || p > DATA.loot.maxPrefix[rar] || s > DATA.loot.maxSuffix[rar] || fam !== a.length) bad.push(rar + ":" + JSON.stringify(a.map(x => x.family)));
+        if (seen[rar]) seen[rar].add(a.length);
+      }
+      return { bad: bad.slice(0, 3), magic: [...seen.magic].sort(), rare: [...seen.rare].sort() };
+    });
+    return (!r.bad.length && r.magic.join() === "1,2" && r.rare.join() === "3,4,5,6") || JSON.stringify(r);
+  }],
+  ["第 2 階段 #4 物品等級決定能擲到第幾階：物品等級 1 只會出需求 1 的階；數值都在範圍內；詞綴來自這個類別自己的詞綴表", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const bad = [];
+      for (const lv of [1, 10, 40, 82]) for (let i = 0; i < 300; i++) {
+        const it = G.makeItem(G.hero.id, lv, "rare");
+        for (const a of it.affixes) {
+          const fam = DATA.affixes[it.itemClass][a.kind].find(f => f.family === a.family);
+          const t = fam && fam.tiers.find(t => t.tier === a.tier);
+          if (!t || t.ilvl > lv || a.ilvl > lv) bad.push(`lv${lv} ${it.itemClass} ${a.family} T${a.tier}`);
+          a.values.forEach((v, k) => { if (v < a.ranges[k][0] || v > a.ranges[k][1]) bad.push(`${a.family} ${v} 不在 ${a.ranges[k]}`); });
+        }
+      }
+      // 物品等級 1 的單手錘「增加 % 物理傷害」只會是最低階（40～49%）
+      const low = [];
+      for (let i = 0; i < 2000; i++) { const a = G.rollAffixes("One_Hand_Maces", 1, "rare").find(x => x.family === "LocalPhysicalDamagePercent"); if (a) low.push(a.values[0]); }
+      return { bad: bad.slice(0, 3), lowMax: Math.max(...low), lowN: low.length };
+    });
+    return (!r.bad.length && r.lowN > 0 && r.lowMax <= 49) || JSON.stringify(r);
+  }],
+  ["第 2 階段 #4 特殊戒指（幽暗、裂痕、深淵之記等，data/loot.js 的 excludeBases）不會掉", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const got = new Set();
+      for (let i = 0; i < 3000; i++) { const it = G.makeItem(G.hero.id, 80); if (DATA.loot.excludeBases.includes(it.baseId)) got.add(it.baseId); }
+      return [...got];
+    });
+    return !r.length || "掉了：" + r.join("、");
+  }],
+  ["第 2 階段 #4 背包點裝備：展開看到底材內建詞綴和擲出來的詞綴（標前綴／後綴、T 幾），再點一次收起來", async ({ page }) => {
+    await page.evaluate(() => { G.S.bag = [G.makeItem(G.hero.id, 30, "rare")]; G.drawBag(); });
+    await page.click("#bagBtn");
+    await page.click("#bagList .bagItem");
+    const t = await page.locator("#bagList .bagItem .mods").innerText().catch(() => "");
+    const want = await page.evaluate(() => G.S.bag[0].affixes.map(G.affixText));
+    const ok1 = want.length >= 3 && want.every(w => t.includes(w)) && /前綴 T\d/.test(t) && /後綴 T\d/.test(t);
+    await page.click("#bagList .bagItem");
+    const closed = await page.locator("#bagList .bagItem .mods").count();
+    return (ok1 && closed === 0) || JSON.stringify({ t, want, closed });
+  }],
   ["第 2 階段 #3 背包空的時候寫「背包是空的」", async ({ page }) => {
     await page.click("#bagBtn");
     const t = await page.locator("#bagList").innerText();

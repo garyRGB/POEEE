@@ -1,5 +1,5 @@
 // 掉落：只負責「打死怪會不會掉、掉什麼」。規則在 data/loot.js，底材在 data/items.js。不碰畫面。
-// 物品等級＝怪物等級（POE2）；詞綴是 #4 的事，這裡只決定底材和稀有度。
+// 物品等級＝怪物等級（POE2）；詞綴交給 src/affixes.js。
 window.G = window.G || {};
 (function () {
   let nextUid = 1;
@@ -20,11 +20,14 @@ window.G = window.G || {};
     const drops = DATA.loot.classDrops[heroId];
     for (let tries = 0; tries < 10; tries++) {
       const cls = pickWeighted(drops, d => d.weight).itemClass;
-      const bases = DATA.items[cls].bases.filter(b => b.reqLevel <= ilvl);
+      const bases = DATA.items[cls].bases.filter(b => b.reqLevel <= ilvl && !DATA.loot.excludeBases.includes(b.id));
       if (!bases.length) continue; // 這類別還沒有這麼低等的底材，換一類
       const base = bases[Math.floor(Math.random() * bases.length)];
-      return { uid: nextUid++, itemClass: cls, baseId: base.id, name: base.name, slot: DATA.items[cls].slot,
-        rarity: rarity || G.rollRarity(), ilvl, reqLevel: base.reqLevel };
+      let r = rarity || G.rollRarity();
+      const affixes = G.rollAffixes(cls, ilvl, r);
+      if (r !== "normal" && !affixes.length) r = "normal"; // 一條詞綴都擲不到就是普通物品（POE 規則）
+      return { uid: nextUid++, itemClass: cls, baseId: base.id, name: G.itemName(base, r, affixes), slot: DATA.items[cls].slot,
+        rarity: r, ilvl, reqLevel: base.reqLevel, implicits: G.rollImplicits(base), affixes };
     }
     return null;
   };
