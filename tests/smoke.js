@@ -29,6 +29,8 @@ async function open(browser, url, opts = {}) {
   await page.goto(url);
   await page.waitForTimeout(300);
   if (opts.start) await startAs(page, opts.start);
+  // 掉裝備的訊息會擠掉其他檢查要看的戰場訊息：除了掉落自己的檢查（opts.loot），一律關掉掉落
+  if (!opts.loot) await page.evaluate(() => { if (window.DATA && DATA.loot) DATA.loot.dropChance = 0; });
   await page.evaluate(() => {
     if (!window.G || !G.S) return;
     window.spawnOnly = dt => G.spawnTick(G.S, dt, DATA.rules, DATA.monsters, G.hero.level);
@@ -592,6 +594,62 @@ const REVIVE_CHECKS = [
   }],
 ];
 
+// 第 2 階段 #3 掉落
+const LOOT_CHECKS = [
+  ["第 2 階段 #3 掉落機率照 data/loot.js：設 1 每隻都掉、設 0 都不掉；預設每 100 隻約 1 件", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const S = G.S, kill = n => Array.from({ length: n }, () => G.makeMonster(DATA.monsters[0], 5));
+      const def = DATA.loot.dropChance;
+      DATA.loot.dropChance = 1; S.bag = []; G.lootDrops(S, G.hero, kill(10)); const all = S.bag.length;
+      DATA.loot.dropChance = 0; S.bag = []; G.lootDrops(S, G.hero, kill(10)); const none = S.bag.length;
+      DATA.loot.dropChance = def; S.bag = []; G.lootDrops(S, G.hero, kill(20000)); const n = S.bag.length;
+      return { all, none, def, n };
+    });
+    return (r.all === 10 && r.none === 0 && r.def === 0.01 && r.n > 150 && r.n < 250) || JSON.stringify(r);
+  }],
+  ["第 2 階段 #3 稀有度比例照 data/loot.js（普通 70／魔法 25／稀有 5，抽 2 萬次誤差 2% 內）", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const c = { normal: 0, magic: 0, rare: 0 };
+      for (let i = 0; i < 20000; i++) c[G.rollRarity()]++;
+      return { normal: c.normal / 200, magic: c.magic / 200, rare: c.rare / 200 };
+    });
+    return (Math.abs(r.normal - 70) < 2 && Math.abs(r.magic - 25) < 2 && Math.abs(r.rare - 5) < 2) || JSON.stringify(r);
+  }],
+  ["第 2 階段 #3 掉落內容：女巫、決鬥者的物品等級＝怪物等級，需求等級不超過物品等級；武器綁職業（決鬥者只掉錘、女巫只掉法杖）", async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const bad = [], weapons = new Set();
+      for (const lv of [1, 5, 20, 60]) for (let i = 0; i < 300; i++) {
+        const it = G.makeItem(G.hero.id, lv);
+        if (!it || it.ilvl !== lv || it.reqLevel > lv) bad.push(JSON.stringify(it));
+        if (it && it.slot === "weapon") weapons.add(DATA.items[it.itemClass].weaponType);
+      }
+      return { bad: bad.slice(0, 3), weapons: [...weapons], id: G.hero.id };
+    });
+    const want = r.id === "duelist" ? "mace" : "wand";
+    return (!r.bad.length && r.weapons.length === 1 && r.weapons[0] === want) || JSON.stringify(r);
+  }],
+  ["第 2 階段 #3 打死怪掉裝備：戰場出現「掉落：…」，按「背包」看得到（稀有度有顏色、寫物品等級）", async ({ page }) => {
+    await page.evaluate(() => {
+      clearField(); DATA.loot.dropChance = 1; DATA.loot.rarity = { normal: 0, magic: 0, rare: 1 };
+      for (const k in G.S.skillOn) G.S.skillOn[k] = true;
+      place(0.6, 0, { baseLife: 0.01, moveSpeed: 0 });
+      for (let i = 0; i < 100 && G.S.monsters.length; i++) G.step(0.1);
+    });
+    const feed = await page.locator("#feed").innerText();
+    await page.click("#bagBtn");
+    const shown = await page.locator("#bagSheet").isVisible();
+    const item = await page.locator("#bagList .bagItem.rare").first().innerText().catch(() => "");
+    const color = await page.evaluate(() => { const b = document.querySelector("#bagList .bagItem.rare b"); return b && getComputedStyle(b).color; });
+    const count = await page.locator("#bagCount").innerText();
+    return (feed.includes("掉落：稀有") && shown && item.includes("物品等級") && count === "1" && color && color !== "rgb(0, 0, 0)") || JSON.stringify({ feed, shown, item, count, color });
+  }],
+  ["第 2 階段 #3 背包空的時候寫「背包是空的」", async ({ page }) => {
+    await page.click("#bagBtn");
+    const t = await page.locator("#bagList").innerText();
+    return t.includes("背包是空的") || t;
+  }],
+];
+
 // #8 魔力
 const MANA_CHECKS = [
   ["#8 魔力條在血條正下方（藍色），等級在名字右邊", async ({ page }) => {
@@ -1144,6 +1202,14 @@ const SKILLRULE_CHECKS = [
 
   for (const [title, fn] of SKILLRULE_CHECKS) for (const cls of ["witch", "duelist"]) {
     const c = await open(browser, url, { start: cls });
+    const name = `${title}（${CLASS_NAME[cls]}）`;
+    report(name, await run(fn, c));
+    if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));
+    await c.page.close();
+  }
+
+  for (const [title, fn] of LOOT_CHECKS) for (const cls of ["witch", "duelist"]) {
+    const c = await open(browser, url, { start: cls, loot: true });
     const name = `${title}（${CLASS_NAME[cls]}）`;
     report(name, await run(fn, c));
     if (c.errors.length) report(name + "（頁面錯誤）", c.errors.join(" / "));

@@ -15,6 +15,7 @@ G.createState = function (hero, rules) {
     msgs: [],       // 這一步的施放訊息
     castLog: [],    // 最近 50 筆施放訊息（#19 戰鬥紀錄用）
     exp: 0, gold: 0, diamond: 0, // 鑽石：買稀有通貨用（第 2 階段才有來源）
+    bag: [],        // 背包：掉到的裝備（src/loot.js），新的在最前面
     potions: hero.potions,
     revives: hero.revives,
     monsters: [],                       // 場上的怪（每隻有 x、y 公尺座標）

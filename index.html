@@ -47,7 +47,7 @@
 
   <!-- 一排 8 顆按鈕 -->
   <nav class="nav" id="nav">
-    <button class="round" id="bagBtn" disabled>背包</button>
+    <button class="round" id="bagBtn">背包</button>
     <button class="round" id="treeBtn" disabled>天賦</button>
     <button class="round" id="autoBtn" disabled>自動</button>
     <button class="round" id="shopBtn" disabled>商店</button>
@@ -56,6 +56,16 @@
     <button class="round" id="logBtn" disabled>戰鬥</button>
     <button class="round" id="questBtn" disabled>任務</button>
   </nav>
+</div>
+
+<!-- 「背包」頁（src/bagPanel.js） -->
+<div class="sheet" id="bagSheet" hidden>
+  <div class="box">
+    <h3>背包 <small class="hint">共 <span id="bagCount">0</span> 件</small></h3>
+    <p class="hint">詞綴（#4）、穿上（#5）還沒做；現在先看得到掉了什麼。重新整理會清空。</p>
+    <div id="bagList"></div>
+    <div class="acts"><button class="btn line" data-close>關閉</button></div>
+  </div>
 </div>
 
 <!-- 「角色」頁 -->
@@ -100,6 +110,7 @@
 <script src="data/classes.js"></script>
 <script src="data/character.js"></script>
 <script src="data/items.js"></script>
+<script src="data/loot.js"></script>
 <script src="data/monsters.js"></script>
 <script src="data/rules.js"></script>
 <script src="data/skills.js"></script>
@@ -119,6 +130,8 @@
 <script src="src/sockets.js"></script>
 <script src="src/progress.js"></script>
 <script src="src/revive.js"></script>
+<script src="src/loot.js"></script>
+<script src="src/bagPanel.js"></script>
 <script src="src/testMode.js"></script>
 <script src="src/tap.js"></script>
 <script src="src/mana.js"></script>

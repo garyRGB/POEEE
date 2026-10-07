@@ -183,3 +183,14 @@ html,body{height:100%}
 .deathScreen .dTitle{font-size:24px;font-weight:900;margin:0}
 .deathScreen .hint{color:#D8D2C6;margin:0}
 .deathScreen .btn{min-width:160px;font-size:16px;padding:10px 14px}
+
+/* ── 背包（第 2 階段 #3）：稀有度顏色跟 POE2 一樣（普通白、魔法藍、稀有黃） ── */
+:root{--normal:#3A342C;--magic:#3550B8;--rare:#8A6A00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--normal:#E6E1D8;--magic:#8888FF;--rare:#FFFF77}}
+:root[data-theme="dark"]{--normal:#E6E1D8;--magic:#8888FF;--rare:#FFFF77}
+.bagItem{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-bottom:1px solid var(--line)}
+.bagItem b{font-size:15px}
+.bagItem small{font-size:12px;color:var(--soft)}
+.bagItem.normal b{color:var(--normal)}
+.bagItem.magic b{color:var(--magic)}
+.bagItem.rare b{color:var(--rare)}

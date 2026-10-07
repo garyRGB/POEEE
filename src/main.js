@@ -1,6 +1,6 @@
 // 啟動：檢查資料 → 選角 → 建立狀態、接上按鈕。各系統的規則放各自的檔案，這裡只負責串起來。
 (function () {
-  const need = ["classes", "character", "items", "monsters", "rules", "skills", "supports", "skillPlay", "supportPlay"];
+  const need = ["classes", "character", "items", "loot", "monsters", "rules", "skills", "supports", "skillPlay", "supportPlay"];
   const missing = need.filter(k => !window.DATA || !DATA[k]);
   if (missing.length) {
     reportError(`資料檔沒有載入：${missing.map(k => "data/" + k + ".js").join("、")}`);
@@ -24,6 +24,7 @@
     G.setupSocketPanel(S, hero);
     G.setupSkillRules(S, hero);
     G.setupDeathScreen(S, hero, rules);
+    G.setupBagPanel(S);
 
     G.step = dt => {
       if (S.dead) return; // 沒有復活道具：停在死亡畫面，整個遊戲停住，按「復活」才繼續
@@ -33,6 +34,9 @@
       S.castLog.push(...S.msgs.splice(0)); S.castLog.splice(0, S.castLog.length - 50); // 施放訊息留給 #19 戰鬥紀錄，戰場上只顯示擊倒、升級
       for (const msg of G.onKills(S, hero, killed, rules)) G.feed(msg);
       for (const msg of G.reviveDrops(S, killed)) G.feed(msg);
+      const loot = G.lootDrops(S, hero, killed);
+      for (const msg of loot) G.feed(msg);
+      if (loot.length) G.drawBag(); // 背包頁開著的話也會更新
       G.manaTick(S, hero, dt);
       for (const msg of G.autoRulesTick(S, hero, rules)) G.feed(msg);
       if (S.dead) for (const msg of G.onDeath(S, hero, rules)) G.feed(msg);
